@@ -40,6 +40,10 @@ async def check_dpad_state(device):
 async def run():
     gamepad = InputDevice(GAMEPAD_DEVICE)
 
+    # Simulate connecting to the drone and setting MAVLink timeout
+    await drone.connect(system_address="serial:///dev/ttyACM0:57600")
+    await drone.core.set_mavlink_timeout(0.02)
+
     actuator_values = {
         'Triangle': (-1, -1),
         'Circle': (-1, 1),
@@ -59,30 +63,38 @@ async def run():
     }
 
     while True:
+        actuator_1 = await poll_trigger_values(gamepad)
+
+        actuator_2, actuator_3 = 0, 0
+        pressed = False
+        for button, name in button_mappings.items():
+            if await check_button_pressed(gamepad, button):
+                actuator_2, actuator_3 = actuator_values[name]
+                pressed = True
+                break
+
+        if not pressed:
+            dpad_direction = await check_dpad_state(gamepad)
+            if dpad_direction:
+                actuator_2, actuator_3 = actuator_values[dpad_direction]
+
+
+        print(f"Setting Actuators: 1 to {actuator_1}, 2 to {actuator_2}, 3 to {actuator_3}")
         try:
-            value = await poll_trigger_values(gamepad)
-            # print(f"Morphing motors set to: {value}")
-
-            # Check for button presses
-            pressed = False
-            for button, name in button_mappings.items():
-                if await check_button_pressed(gamepad, button):
-                    actuator_2, actuator_3 = actuator_values[name]
-                    print(f"Button {name} pressed - Setting Actuators: 2 to {actuator_2}, 3 to {actuator_3}")
-                    pressed = True
-                    break
-
-            # Check for D-pad directions if no other button is pressed
-            if not pressed:
-                dpad_direction = await check_dpad_state(gamepad)
-                if dpad_direction:
-                    actuator_2, actuator_3 = actuator_values[dpad_direction]
-                    print(f"D-pad {dpad_direction} pressed - Setting Actuators: 2 to {actuator_2}, 3 to {actuator_3}")
-
-            await asyncio.sleep(0.1)  # Adjust based on your needs
-
+            await drone.action.set_actuator(1, actuator_1)
         except Exception as e:
-            print(e)
+            pass
+        try:
+            await drone.action.set_actuator(2, actuator_2)
+        except Exception as e:
+            pass
+        try:
+            await drone.action.set_actuator(3, actuator_3)
+        except Exception as e:
+            pass
+
+        await asyncio.sleep(0.1)
+
 
 if __name__ == "__main__":
     asyncio.run(run())
