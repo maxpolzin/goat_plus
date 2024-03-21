@@ -1,66 +1,85 @@
 #!/usr/bin/env python3
 
 import asyncio
-import os
-import struct
-import time
-from mavsdk import System
+from evdev import InputDevice, ecodes
 
-# Adjust this path to your gamepad's device file
-GAMEPAD_DEVICE = '/dev/input/js0'
-# Define the timeout duration in seconds
-TRIGGER_TIMEOUT = 1.0  # 1 second for example, adjust as needed
+GAMEPAD_DEVICE = '/dev/input/event9'
 
-async def get_trigger_values():
-    """
-    Read the gamepad's device file to get the R2 and L2 trigger values.
-    Returns a value between -1 and +1, where -1 is L2 fully pressed, and +1 is R2 fully pressed.
-    Implements a timeout to return the value to 0 if neither trigger is pressed for a defined duration.
-    """
-    last_press_time = time.time()  # Track the last time a trigger was pressed
+async def poll_trigger_values(device):
+    l2_state = device.absinfo(ecodes.ABS_Z)
+    r2_state = device.absinfo(ecodes.ABS_RZ)
 
-    # Open the gamepad device file in non-blocking mode
-    with open(GAMEPAD_DEVICE, 'rb', buffering=0) as f:
-        while True:
-            # Check for timeout
-            if time.time() - last_press_time > TRIGGER_TIMEOUT:
-                return 0  # Return to neutral position after timeout
+    l2_value = l2_state.value / 255.0 if l2_state else 0
+    r2_value = -r2_state.value / 255.0 if r2_state else 0
 
-            # Attempt to read an event from the gamepad
-            event = f.read(8)
-            if not event:
-                await asyncio.sleep(0.01)  # Small sleep to prevent a busy loop
-                continue
+    return l2_value + r2_value
 
-            # Unpack the event
-            _, value, type, number = struct.unpack('IhBB', event)
+async def check_button_pressed(device, button_code):
+    """Check if a specific button is currently pressed."""
+    try:
+        current = device.active_keys()
+    except IOError:  # May occur if the device is temporarily unavailable
+        return False
+    return button_code in current
 
-            # Adjust the logic for L2 and R2 triggers
-            if type == 2:  # Analog type (triggers)
-                if number == 2:  # L2 trigger
-                    last_press_time = time.time()  # Update last press time
-                    # Normalize the L2 value
-                    l2_value = (value - (-32000)) / (32000 - (-32000))
-                    return l2_value
-                elif number == 5:  # R2 trigger
-                    last_press_time = time.time()  # Update last press time
-                    # Normalize and invert the R2 value
-                    r2_value = (value - (-32000)) / (32000 - (-32000))
-                    r2_value = r2_value * -1  # Invert to make 0 to -1
-                    return r2_value
+async def check_dpad_state(device):
+    """Check the state of the D-pad (directional pad)."""
+    dpad_x = device.absinfo(ecodes.ABS_HAT0X)
+    dpad_y = device.absinfo(ecodes.ABS_HAT0Y)
+
+    if dpad_x and dpad_x.value == -1:
+        return 'LeftArrow'
+    elif dpad_x and dpad_x.value == 1:
+        return 'RightArrow'
+    elif dpad_y and dpad_y.value == -1:
+        return 'UpArrow'
+    elif dpad_y and dpad_y.value == 1:
+        return 'DownArrow'
+    return None
 
 async def run():
-    drone = System()
-    await drone.connect(system_address="serial:///dev/ttyACM0:57600")
-    await drone.core.set_mavlink_timeout(0.02)
+    gamepad = InputDevice(GAMEPAD_DEVICE)
+
+    actuator_values = {
+        'Triangle': (-1, -1),
+        'Circle': (-1, 1),
+        'Square': (1, -1),
+        'X': (1, 1),
+        'LeftArrow': (1, 0),
+        'RightArrow': (-1, 0),
+        'UpArrow': (0, -1),
+        'DownArrow': (0, 1)
+    }
+
+    button_mappings = {
+        ecodes.BTN_NORTH: 'Triangle',
+        ecodes.BTN_EAST: 'Circle',
+        ecodes.BTN_WEST: 'Square',
+        ecodes.BTN_SOUTH: 'X'
+    }
 
     while True:
         try:
-            value = await get_trigger_values()
+            value = await poll_trigger_values(gamepad)
+            # print(f"Morphing motors set to: {value}")
 
-            # Control actuator with the trigger value
-            index = 1  # Example index, adjust as needed
-            await drone.action.set_actuator(index, value)
+            # Check for button presses
+            pressed = False
+            for button, name in button_mappings.items():
+                if await check_button_pressed(gamepad, button):
+                    actuator_2, actuator_3 = actuator_values[name]
+                    print(f"Button {name} pressed - Setting Actuators: 2 to {actuator_2}, 3 to {actuator_3}")
+                    pressed = True
+                    break
+
+            # Check for D-pad directions if no other button is pressed
+            if not pressed:
+                dpad_direction = await check_dpad_state(gamepad)
+                if dpad_direction:
+                    actuator_2, actuator_3 = actuator_values[dpad_direction]
+                    print(f"D-pad {dpad_direction} pressed - Setting Actuators: 2 to {actuator_2}, 3 to {actuator_3}")
+
+            await asyncio.sleep(0.1)  # Adjust based on your needs
 
         except Exception as e:
             print(e)
