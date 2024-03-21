@@ -2,6 +2,7 @@
 
 import asyncio
 from evdev import InputDevice, ecodes
+from mavsdk import System
 
 GAMEPAD_DEVICE = '/dev/input/event9'
 
@@ -15,10 +16,9 @@ async def poll_trigger_values(device):
     return l2_value + r2_value
 
 async def check_button_pressed(device, button_code):
-    """Check if a specific button is currently pressed."""
     try:
         current = device.active_keys()
-    except IOError:  # May occur if the device is temporarily unavailable
+    except IOError:
         return False
     return button_code in current
 
@@ -40,7 +40,7 @@ async def check_dpad_state(device):
 async def run():
     gamepad = InputDevice(GAMEPAD_DEVICE)
 
-    # Simulate connecting to the drone and setting MAVLink timeout
+    drone = System()
     await drone.connect(system_address="serial:///dev/ttyACM0:57600")
     await drone.core.set_mavlink_timeout(0.02)
 
