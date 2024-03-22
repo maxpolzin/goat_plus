@@ -41,8 +41,9 @@ async def run():
     gamepad = InputDevice(GAMEPAD_DEVICE)
 
     drone = System()
-    await drone.connect(system_address="serial:///dev/ttyACM0:57600")
-    await drone.core.set_mavlink_timeout(0.02)
+    # await drone.connect(system_address="serial:///dev/ttyACM0:57600")
+    await drone.connect(system_address="tcp://localhost:5760")
+    await drone.core.set_mavlink_timeout(0.01)
 
     actuator_values = {
         'Triangle': (-1, -1),
@@ -93,7 +94,7 @@ async def run():
         except Exception as e:
             pass
 
-        await asyncio.sleep(0.1)
+        # await asyncio.sl1eep(0.1)
 
 
 if __name__ == "__main__":
