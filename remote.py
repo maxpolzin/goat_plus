@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 
 import asyncio
-from evdev import InputDevice, ecodes
+from evdev import InputDevice, ecodes, list_devices
 from mavsdk import System
 
-GAMEPAD_DEVICE = '/dev/input/event9'
+
+async def find_gamepad_device():
+    devices = [InputDevice(path) for path in list_devices()]
+    for device in devices:
+        if 'Wireless Controller' in device.name:
+            return device.path
+    return None
 
 async def poll_trigger_values(device):
     l2_state = device.absinfo(ecodes.ABS_Z)
@@ -38,12 +44,21 @@ async def check_dpad_state(device):
     return None
 
 async def run():
-    gamepad = InputDevice(GAMEPAD_DEVICE)
+
+    gamepad_device_path = await find_gamepad_device()
+    if gamepad_device_path:
+        print(f"Found gamepad at: {gamepad_device_path}")
+    else:
+        print("No gamepad found.")
+        return
+
+    gamepad = InputDevice(gamepad_device_path)
 
     drone = System()
     # await drone.connect(system_address="serial:///dev/ttyACM0:57600")
     await drone.connect(system_address="tcp://localhost:5760")
-    await drone.core.set_mavlink_timeout(0.01)
+    await drone.core.set_mavlink_timeout(1.0)
+
 
     actuator_values = {
         'Triangle': (-1, -1),
@@ -79,19 +94,13 @@ async def run():
             if dpad_direction:
                 actuator_2, actuator_3 = actuator_values[dpad_direction]
 
-
         print(f"Setting Actuators: 1 to {actuator_1}, 2 to {actuator_2}, 3 to {actuator_3}")
         try:
             await drone.action.set_actuator(1, actuator_1)
-        except Exception as e:
-            pass
-        try:
             await drone.action.set_actuator(2, actuator_2)
-        except Exception as e:
-            pass
-        try:
             await drone.action.set_actuator(3, actuator_3)
         except Exception as e:
+            print(e)
             pass
 
         # await asyncio.sl1eep(0.1)
