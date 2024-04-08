@@ -146,10 +146,12 @@ def visusalize_ellipse_properties(props):
 
     backend.fig.axes[0].set_aspect('equal', adjustable='box')
 
-    backend.fig.axes[0].text(-limit, limit, f'Input:\nCircumference: {circumference:.2f}\na1: {a1:.3f}, b1: {b1:.3f}\na2: {a2:.3f}, b2: {b2:.3f}')
+    backend.fig.axes[0].text(-limit, limit, f'Circumference: {circumference:.2f}')
+    backend.fig.axes[0].text(-limit, 0.9*limit, f'a1: {a1:.3f}, b1: {b1:.3f}', color='blue')
+    backend.fig.axes[0].text(-limit, 0.8*limit, f'a2: {a2:.3f}, b2: {b2:.3f}', color='red')
 
-    backend.fig.axes[0].text(-limit, -limit, f'Circumference1 ≈ {e1_circumference:.2f}\nArc lengths:\nTop:{arc_length_top_e1:.2f}, Side:{arc_length_side_e1:.2f}\nDelta:{delta1:.2f}', va='top')
-    backend.fig.axes[0].text(limit, -limit, f'Circumference2 ≈ {e2_circumference:.2f}\nArc lengths:\nTop:{arc_length_top_e2:.2f}, Side:{arc_length_side_e2:.2f}\nDelta:{delta2:.2f}', va='top', ha='right')
+    backend.fig.axes[0].text(-limit, -limit, f'Circ. 1≈{e1_circumference:.2f}\nArc lengths 1:\nTop:{arc_length_top_e1:.2f}, Side:{arc_length_side_e1:.2f}\nDelta:{delta1:.2f}', va='top', color='blue')
+    backend.fig.axes[0].text(limit, -limit, f'Circ. 2≈{e2_circumference:.2f}\nArc lengths 2:\nTop:{arc_length_top_e2:.2f}, Side:{arc_length_side_e2:.2f}\nDelta:{delta2:.2f}', va='top', ha='right', color='red')
 
 
     backend.fig.axes[0].text((b2+a1)/2, limit/50, f'Distance: {abs(distance1):.3f}', ha='left')
@@ -175,7 +177,7 @@ def objective(vars, circumference):
     distance_diff = (props.get("distance1") - props.get("distance2"))**2
     arc_length_top = (props.get("arc_length_top_e1") - circumference/4.0)**2
     arc_length_side = (props.get("arc_length_side_e1") - circumference/4.0)**2
-    distance = (props.get("distance1")-0.105)**2
+    distance = (props.get("distance1")-0.1)**2
     
     return distance_diff + arc_length_top + arc_length_side + distance
 
@@ -206,8 +208,9 @@ visusalize_ellipse_properties(props)
 # Assume compute_ellipse_properties and objective function are defined as before
 
 # Sampling
-a1_values = np.linspace(bounds[0][0], bounds[0][1], 20)
-a2_values = np.linspace(bounds[1][0], bounds[1][1], 20)
+no_pts = 10
+a1_values = np.linspace(bounds[0][0], bounds[0][1], no_pts)
+a2_values = np.linspace(bounds[1][0], bounds[1][1], no_pts)
 A1, A2 = np.meshgrid(a1_values, a2_values)
 Z = np.zeros_like(A1)
 
@@ -219,7 +222,7 @@ for i in range(A1.shape[0]):
 
 # Contour plot
 plt.figure()
-cp = plt.contour(A1, A2, Z, levels=np.linspace(Z.min(), Z.max(), 20))
+cp = plt.contour(A1, A2, Z, levels=np.linspace(Z.min(), Z.max(), 50))
 plt.colorbar(cp)
 plt.xlabel('a1')
 plt.ylabel('a2')
@@ -242,9 +245,6 @@ plt.show()
 
 a1=0.39
 a2=0.355
-
-a1=0.5
-a2=0.5
 
 props = compute_ellipse_properties(a1, a2, circumference)
 visusalize_ellipse_properties(props)
