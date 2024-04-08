@@ -11,9 +11,15 @@ from sympy.geometry.line import Line2D
 import math
 import numpy as np
 from scipy.integrate import quad
-from scipy.optimize import fsolve
+from scipy.optimize import fsolve, minimize
+
+%matplotlib widget
+import matplotlib.pyplot as plt
+
 
 # %%
+
+circumference = 2.0
 
 def compute_ellipse_properties(a1, a2, circumference):
     
@@ -150,7 +156,7 @@ def visusalize_ellipse_properties(props):
     backend.fig.axes[0].text(limit/50, (b1+a2)/2, f'Distance: {abs(distance2):.3f}', ha='left')
 
 
-    backend.fig.axes[0].text(pt.x+limit/25, pt.y+limit/25, f'Angle: {theta_degrees:.2f} degrees', ha='left')
+    backend.fig.axes[0].text(pt_top_right.x+limit/25, pt_top_right.y+limit/25, f'Angle: {theta_degrees:.2f} degrees', ha='left')
 
     backend.fig.axes[0].plot(pt_top_right.x.evalf(), pt_top_right.y.evalf(), 'ko')
     backend.fig.axes[0].plot(pt_top_left.x.evalf(), pt_top_left.y.evalf(), 'ko')
@@ -159,17 +165,86 @@ def visusalize_ellipse_properties(props):
     backend.show()
 
 
-
-
 # %%
 
-circumference = 2.0
-a1=0.39
-a2=0.355
+# Objective function
+def objective(vars, circumference):
+    a1, a2 = vars
+    props = compute_ellipse_properties(a1, a2, circumference)
+    
+    distance_diff = (props.get("distance1") - props.get("distance2"))**2
+    arc_length_top = (props.get("arc_length_top_e1") - circumference/4.0)**2
+    arc_length_side = (props.get("arc_length_side_e1") - circumference/4.0)**2
+    distance = (props.get("distance1")-0.105)**2
+    
+    return distance_diff + arc_length_top + arc_length_side + distance
+
+# Bounds for a1 and a2
+bounds = [(0.1, 0.48), (0.1, 0.48)]
+
+# Initial guess
+initial_guess = [(bounds[0][0]+bounds[0][1])/2, (bounds[1][0]+bounds[1][1])/2]
+
+# Optimization
+result = minimize(objective, initial_guess, args=(circumference,), bounds=bounds, method='L-BFGS-B')
+
+if result.success:
+    optimized_a1, optimized_a2 = result.x
+    print(f"Optimized a1: {optimized_a1}, Optimized a2: {optimized_a2}")
+else:
+    print("Optimization was unsuccessful.")
 
 
-#objective = (props.get("distance1") - props.get("distance2"))**2 + (props.get("arc_length_top_e1") - circumference/4.0)**2+ (props.get("arc_length_side_e2") - circumference/4.0)**2
+a1=optimized_a1
+a2=optimized_a2
 
 props = compute_ellipse_properties(a1, a2, circumference)
 visusalize_ellipse_properties(props)
 
+# %%
+
+# Assume compute_ellipse_properties and objective function are defined as before
+
+# Sampling
+a1_values = np.linspace(bounds[0][0], bounds[0][1], 20)
+a2_values = np.linspace(bounds[1][0], bounds[1][1], 20)
+A1, A2 = np.meshgrid(a1_values, a2_values)
+Z = np.zeros_like(A1)
+
+for i in range(A1.shape[0]):
+    for j in range(A1.shape[1]):
+        Z[i, j] = objective([A1[i, j], A2[i, j]], circumference)
+
+# %%
+
+# Contour plot
+plt.figure()
+cp = plt.contour(A1, A2, Z, levels=np.linspace(Z.min(), Z.max(), 20))
+plt.colorbar(cp)
+plt.xlabel('a1')
+plt.ylabel('a2')
+plt.title('Contour Plot of the Objective Function')
+plt.show()
+
+# 3D Surface Plot
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+surf = ax.plot_surface(A1, A2, Z, cmap='viridis', edgecolor='none')
+fig.colorbar(surf)
+ax.set_xlabel('a1')
+ax.set_ylabel('a2')
+ax.set_zlabel('Objective Value')
+ax.set_title('Surface Plot of the Objective Function')
+plt.show()
+
+
+# %%
+
+a1=0.39
+a2=0.355
+
+a1=0.5
+a2=0.5
+
+props = compute_ellipse_properties(a1, a2, circumference)
+visusalize_ellipse_properties(props)
