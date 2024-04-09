@@ -174,12 +174,15 @@ def objective(vars, circumference):
     a1, a2 = vars
     props = compute_ellipse_properties(a1, a2, circumference)
     
-    distance_diff = (props.get("distance1") - props.get("distance2"))**2
+    target_gap_width = 0.10
+
+#    distance_diff = (props.get("distance1") - props.get("distance2"))**2
     arc_length_top = (props.get("arc_length_top_e1") - circumference/4.0)**2
     arc_length_side = (props.get("arc_length_side_e1") - circumference/4.0)**2
-    distance = (props.get("distance1")-0.1)**2
+    distance1 = (props.get("distance1")-target_gap_width)**2
+    distance2 = (props.get("distance2")-target_gap_width)**2
     
-    return distance_diff + arc_length_top + arc_length_side + distance
+    return arc_length_top + arc_length_side + distance1 + distance2
 
 # Bounds for a1 and a2
 bounds = [(0.1, 0.48), (0.1, 0.48)]
