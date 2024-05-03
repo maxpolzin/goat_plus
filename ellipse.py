@@ -174,7 +174,8 @@ def objective(vars, circumference):
     a1, a2 = vars
     props = compute_ellipse_properties(a1, a2, circumference)
     
-    target_gap_width = 0.11
+    target_gap_width = 0.1125
+    # target_gap_width = 0.05
 
 #    distance_diff = (props.get("distance1") - props.get("distance2"))**2
     arc_length_top = (props.get("arc_length_top_e1") - circumference/4.0)**2
@@ -183,7 +184,7 @@ def objective(vars, circumference):
     distance2 = (props.get("distance2")-target_gap_width)**2
 
     # Symmetric ellipses, both rods sliding
-    return distance1 + distance2
+    # return distance1 + distance2
 
     # # Asymetric ellipses, one rod sliding
     return arc_length_top + arc_length_side + distance1 + distance2
