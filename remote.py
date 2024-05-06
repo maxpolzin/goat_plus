@@ -79,26 +79,25 @@ async def run():
     }
 
     while True:
-        actuator_1 = await poll_trigger_values(gamepad)
+        # actuator_1 = await poll_trigger_values(gamepad)
 
-        actuator_2, actuator_3 = 0, 0
+        actuator_1, actuator_2 = 0, 0
         pressed = False
         for button, name in button_mappings.items():
             if await check_button_pressed(gamepad, button):
-                actuator_2, actuator_3 = actuator_values[name]
+                actuator_1, actuator_2 = actuator_values[name]
                 pressed = True
                 break
 
         if not pressed:
             dpad_direction = await check_dpad_state(gamepad)
             if dpad_direction:
-                actuator_2, actuator_3 = actuator_values[dpad_direction]
+                actuator_1, actuator_2 = actuator_values[dpad_direction]
 
-        print(f"Setting Actuators: 1 to {actuator_1}, 2 to {actuator_2}, 3 to {actuator_3}")
+        print(f"Setting Actuators: 1 to {actuator_1}, 2 to {actuator_2}")
         try:
             await drone.action.set_actuator(1, actuator_1)
             await drone.action.set_actuator(2, actuator_2)
-            await drone.action.set_actuator(3, actuator_3)
         except Exception as e:
             print(e)
             pass
