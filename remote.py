@@ -17,16 +17,21 @@ async def poll_trigger_values(device):
     r2_state = device.absinfo(ecodes.ABS_RZ)
 
     l2_value = l2_state.value / 255.0 if l2_state else 0
-    r2_value = -r2_state.value / 255.0 if r2_state else 0
+    r2_value = r2_state.value / 255.0 if r2_state else 0
 
-    return l2_value + r2_value
+    return l2_value, r2_value
 
-async def check_button_pressed(device, button_code):
+async def check_button_pressed(device, button_codes):
     try:
         current = device.active_keys()
     except IOError:
         return False
-    return button_code in current
+
+    def intersection(lst1, lst2):
+        lst3 = [value for value in lst1 if value in lst2]
+        return lst3
+
+    return intersection(button_codes,current)
 
 async def check_dpad_state(device):
     """Check the state of the D-pad (directional pad)."""
@@ -57,47 +62,99 @@ async def run():
     drone = System()
     # await drone.connect(system_address="serial:///dev/ttyACM0:57600")
     await drone.connect(system_address="tcp://localhost:5760")
-    await drone.core.set_mavlink_timeout(1.0)
+    await drone.core.set_mavlink_timeout(3.0)
 
 
     actuator_values = {
-        'Triangle': (-1, -1),
-        'Circle': (-1, 1),
-        'Square': (1, -1),
-        'X': (1, 1),
-        'LeftArrow': (1, 0),
-        'RightArrow': (-1, 0),
-        'UpArrow': (0, -1),
-        'DownArrow': (0, 1)
+        'Triangle': (1, 1),
+        'Circle': (1, -1),
+        'Square': (-1, 1),
+        'X': (-1, -1),
+        'LeftArrow': (-1, 0),
+        'RightArrow': (1, 0),
+        'UpArrow': (0, 1),
+        'DownArrow': (0, -1)
     }
 
     button_mappings = {
         ecodes.BTN_NORTH: 'Triangle',
         ecodes.BTN_EAST: 'Circle',
         ecodes.BTN_WEST: 'Square',
-        ecodes.BTN_SOUTH: 'X'
+        ecodes.BTN_SOUTH: 'X',
+        ecodes.BTN_START: 'Options'
     }
 
     while True:
-        # actuator_1 = await poll_trigger_values(gamepad)
+
+        pressed_buttons = await check_button_pressed(gamepad, button_mappings.keys())
+
+        l2_value, r2_value = await poll_trigger_values(gamepad)
+
+
+
+        # Normalized velocities for the tendons
+        print(f"l2_value: {l2_value}, r2_value: {r2_value}")
+
+        button_pushed_threshold = 0.1
+
+        if ecodes.BTN_START in pressed_buttons:
+            loop_tendon_1 = -0.4
+            loop_tendon_2 = -0.4
+        elif l2_value > button_pushed_threshold and r2_value > button_pushed_threshold:
+            loop_tendon_1 = (l2_value+r2_value)/2
+            loop_tendon_2 = (l2_value+r2_value)/2
+        elif l2_value > button_pushed_threshold:
+            loop_tendon_1 = l2_value
+            loop_tendon_2 = -l2_value/10.0
+        elif r2_value > button_pushed_threshold:
+            loop_tendon_1 = -r2_value/10.0
+            loop_tendon_2 = r2_value
+        else:
+            loop_tendon_1 = 0.0
+            loop_tendon_2 = 0.0
+        
+
+        # Map normalized velocities to actuator values
+        no_motion = -1.0
+        
+        def map_to_actuator_value(value):
+            return 2*abs(value) - 1.0
+
+        if loop_tendon_1 >= 0:
+            actuator_3 = map_to_actuator_value(loop_tendon_1)
+            actuator_4 = no_motion
+        elif loop_tendon_1 < 0:
+            actuator_3 = no_motion
+            actuator_4 = map_to_actuator_value(loop_tendon_1)
+
+        if loop_tendon_2 >= 0:
+            actuator_5 = map_to_actuator_value(loop_tendon_2)
+            actuator_6 = no_motion
+        elif loop_tendon_2 < 0:
+            actuator_5 = no_motion
+            actuator_6 = map_to_actuator_value(loop_tendon_2)
+
+   
 
         actuator_1, actuator_2 = 0, 0
-        pressed = False
-        for button, name in button_mappings.items():
-            if await check_button_pressed(gamepad, button):
+        for button in pressed_buttons:
+            name = button_mappings[button]
+            if name in actuator_values:
                 actuator_1, actuator_2 = actuator_values[name]
-                pressed = True
-                break
 
-        if not pressed:
-            dpad_direction = await check_dpad_state(gamepad)
-            if dpad_direction:
-                actuator_1, actuator_2 = actuator_values[dpad_direction]
+        dpad_direction = await check_dpad_state(gamepad)
+        if dpad_direction:
+            actuator_1, actuator_2 = actuator_values[dpad_direction]
 
-        print(f"Setting Actuators: 1 to {actuator_1}, 2 to {actuator_2}")
+
+        print(f"Setting Actuators: \n1 to {actuator_1}, \n2 to {actuator_2}, \n3 to {actuator_3}, \n4 to {actuator_4}, \n5 to {actuator_5}, \n6 to {actuator_6}")
         try:
             await drone.action.set_actuator(1, actuator_1)
             await drone.action.set_actuator(2, actuator_2)
+            await drone.action.set_actuator(3, actuator_3)
+            await drone.action.set_actuator(4, actuator_4)
+            await drone.action.set_actuator(5, actuator_5)
+            await drone.action.set_actuator(6, actuator_6)
         except Exception as e:
             print(e)
             pass
