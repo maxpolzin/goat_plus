@@ -26,11 +26,10 @@ async def check_button_pressed(device, button_codes):
         current = device.active_keys()
     except IOError:
         return False
-
+        
     def intersection(lst1, lst2):
         lst3 = [value for value in lst1 if value in lst2]
         return lst3
-
     return intersection(button_codes,current)
 
 async def check_dpad_state(device):
@@ -58,6 +57,7 @@ async def run():
         return
 
     gamepad = InputDevice(gamepad_device_path)
+    should_tension_tendon_loops = False  
 
     drone = System()
     # await drone.connect(system_address="serial:///dev/ttyACM0:57600")
@@ -81,7 +81,8 @@ async def run():
         ecodes.BTN_EAST: 'Circle',
         ecodes.BTN_WEST: 'Square',
         ecodes.BTN_SOUTH: 'X',
-        ecodes.BTN_START: 'Options'
+        ecodes.BTN_START: 'Options',
+        ecodes.BTN_SELECT: 'Share'
     }
 
     while True:
@@ -91,9 +92,10 @@ async def run():
         l2_value, r2_value = await poll_trigger_values(gamepad)
 
 
+        if ecodes.BTN_SELECT in pressed_buttons:
+            should_tension_tendon_loops = not should_tension_tendon_loops
 
-        # Normalized velocities for the tendons
-        print(f"l2_value: {l2_value}, r2_value: {r2_value}")
+        print(f"Should tension tendon loops: {should_tension_tendon_loops}")
 
         button_pushed_threshold = 0.1
 
@@ -109,10 +111,16 @@ async def run():
         elif r2_value > button_pushed_threshold:
             loop_tendon_1 = -r2_value/10.0
             loop_tendon_2 = r2_value
-        else:
-            loop_tendon_1 = 0.0
-            loop_tendon_2 = 0.0
-        
+        else: 
+            if should_tension_tendon_loops:
+                loop_tendon_1 = 0.5
+                loop_tendon_2 = 0.5
+            else:
+                loop_tendon_1 = 0.0
+                loop_tendon_2 = 0.0
+
+
+
 
         # Map normalized velocities to actuator values
         no_motion = -1.0
