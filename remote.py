@@ -26,7 +26,7 @@ async def check_button_pressed(device, button_codes):
         current = device.active_keys()
     except IOError:
         return False
-        
+
     def intersection(lst1, lst2):
         lst3 = [value for value in lst1 if value in lst2]
         return lst3
@@ -60,8 +60,15 @@ async def run():
     should_tension_tendon_loops = False  
 
     drone = System()
-    # await drone.connect(system_address="serial:///dev/ttyACM0:57600")
+
+    print("Connecting...")
+    # await drone.connect(system_address="serial:///dev/ttyUSB0:57600")
     await drone.connect(system_address="tcp://localhost:5760")
+    # await drone.connect(system_address="tcp://192.168.2.1:5760")
+    # await drone.connect(system_address="udp://192.168.2.1:14550")
+    # await drone.connect(system_address="udp://:14550")
+    print("Connected.")
+
     await drone.core.set_mavlink_timeout(3.0)
 
 
@@ -85,17 +92,20 @@ async def run():
         ecodes.BTN_SELECT: 'Share'
     }
 
+    msg_count = 0
+
     while True:
 
         pressed_buttons = await check_button_pressed(gamepad, button_mappings.keys())
 
         l2_value, r2_value = await poll_trigger_values(gamepad)
 
+        share_button_state = ecodes.BTN_SELECT in pressed_buttons
 
-        if ecodes.BTN_SELECT in pressed_buttons:
+        if share_button_state and not prev_share_button_state:
             should_tension_tendon_loops = not should_tension_tendon_loops
+        prev_share_button_state = share_button_state
 
-        print(f"Should tension tendon loops: {should_tension_tendon_loops}")
 
         button_pushed_threshold = 0.1
 
@@ -155,7 +165,6 @@ async def run():
             actuator_1, actuator_2 = actuator_values[dpad_direction]
 
 
-        print(f"Setting Actuators: \n1 to {actuator_1}, \n2 to {actuator_2}, \n3 to {actuator_3}, \n4 to {actuator_4}, \n5 to {actuator_5}, \n6 to {actuator_6}")
         try:
             await drone.action.set_actuator(1, actuator_1)
             await drone.action.set_actuator(2, actuator_2)
@@ -163,6 +172,11 @@ async def run():
             await drone.action.set_actuator(4, actuator_4)
             await drone.action.set_actuator(5, actuator_5)
             await drone.action.set_actuator(6, actuator_6)
+            print(f"Messages sent: {msg_count}")
+            print(f"Loop tendons engaged: {should_tension_tendon_loops}")
+            print(f"Central winches: {actuator_1}, {actuator_2}, loop winches: {actuator_3}, {actuator_4}, {actuator_5}, {actuator_6}")
+            msg_count = msg_count+1
+
         except Exception as e:
             print(e)
             pass
