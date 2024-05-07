@@ -63,10 +63,10 @@ async def run():
 
     print("Connecting...")
     # await drone.connect(system_address="serial:///dev/ttyUSB0:57600")
-    await drone.connect(system_address="tcp://localhost:5760")
+    # await drone.connect(system_address="tcp://localhost:5760")
     # await drone.connect(system_address="tcp://192.168.2.1:5760")
     # await drone.connect(system_address="udp://192.168.2.1:14550")
-    # await drone.connect(system_address="udp://:14550")
+    await drone.connect(system_address="udp://:14551")
     print("Connected.")
 
     await drone.core.set_mavlink_timeout(3.0)
