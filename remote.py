@@ -4,6 +4,7 @@ import asyncio
 import time
 from evdev import InputDevice, ecodes, list_devices
 from mavsdk import System
+from tqdm import tqdm
 
 class GamepadNotFoundError(Exception):
     pass
@@ -158,20 +159,133 @@ class WinchActuation:
         return [actuator_1, actuator_2]
 
 
+class ParamList:
+    def __init__(self, filename):
+        self.filename = filename
+        self.params = {
+            "int": {},
+            "float": {},
+            "custom": {}
+        }
+        self.read_params_from_file()
+
+    def read_params_from_file(self):
+        """Read parameters from a file and categorize them by type."""
+        with open(self.filename, "r") as file:
+            for line in file:
+                if line.startswith("#") or not line.strip():
+                    continue
+                vehicle_id, component_id, name, value, type = line.strip().split("\t")
+                if type == "6":  # Assuming type 6 is int
+                    self.params["int"][name] = int(value)
+                elif type == "9":  # Assuming type 9 is float
+                    self.params["float"][name] = float(value)
+                else:
+                    self.params["custom"][name] = value
+
+
+class ParamHandler:
+    def __init__(self):
+        self.copter_params = ParamList("px4_flying_goat_v1.15-beta1.params")
+        self.rover_params = ParamList("px4_driving_goat_v1.15-beta1.params")
+
+        self.differences = self.find_param_differences()
+
+    def find_param_differences(self):
+        """Finds names of parameters that are different or unique between copter and rover."""
+        differences = {
+            "int": set(),
+            "float": set(),
+            "custom": set()
+        }
+
+        # Check all parameter types for differences or uniqueness
+        for param_type in ['int', 'float', 'custom']:
+            copter_keys = set(self.copter_params.params[param_type].keys())
+            rover_keys = set(self.rover_params.params[param_type].keys())
+
+            # Find parameters that are different or unique to one set
+            unique_or_different = (copter_keys ^ rover_keys) | {name for name in copter_keys & rover_keys if self.copter_params.params[param_type][name] != self.rover_params.params[param_type][name]}
+            differences[param_type].update(unique_or_different)
+
+        return differences
+
+
+
+    async def upload_differing_and_missing_copter_params(self, drone):
+        await self.upload_params(drone, self.copter_params.params)
+
+    async def upload_differing_and_missing_rover_params(self, drone):
+        await self.upload_params(drone, self.rover_params.params)
+
+    async def upload_params(self, drone, param_list):
+        print("Uploading parameters to the drone...")
+        for param_type in ['int', 'float', 'custom']:
+            for name in self.differences[param_type]:
+                # Check if the parameter exists in the param_list before uploading
+                if name in param_list[param_type]:
+                    value = param_list[param_type][name]
+                    if param_type == 'int':
+                        print(f"Setting {name} to {value}")
+                        await drone.param.set_param_int(name, value)
+                    elif param_type == 'float':
+                        print(f"Setting {name} to {value}")
+                        await drone.param.set_param_float(name, value)
+                    else:  # Assuming custom parameters need specific handling
+                        await drone.param.set_param_custom(name, value)
+        time.sleep(1)
+
+
 
 class Goat():
+
+    COPTER = 0
+    ROVER = 6
+
     def __init__(self):
         self.drone = None
-        
+        self.param_handler = ParamHandler()
+        differences = self.param_handler.find_param_differences()
+
+
     async def initalize(self):
         print("Connecting...")
         self.drone = System()
         await self.drone.connect(system_address="udp://:14551")
         await self.drone.core.set_mavlink_timeout(3.0)
-        print("Connected.")
+        
+        self.mode = await self.drone.param.get_param_int("CA_AIRFRAME")
+
+        print(f"Connected. GOAT is copter(0) or rover(6): {self.mode}")
+
 
     async def reboot(self):
         await self.drone.action.reboot()
+
+    
+    async def change_mode(self):
+        print("Changing mode...")
+        if self.mode == self.COPTER:
+            await self.drone.param.set_param_int("CA_AIRFRAME", self.ROVER)
+            await self.reboot()
+
+            time.sleep(10)
+                            
+            await self.param_handler.upload_differing_and_missing_rover_params(self.drone)
+            await self.reboot()
+            self.mode = await self.drone.param.get_param_int("CA_AIRFRAME")
+
+        else:
+            await self.drone.param.set_param_int("CA_AIRFRAME", self.COPTER)
+            await self.reboot()
+
+            time.sleep(10)
+
+            await self.param_handler.upload_differing_and_missing_copter_params(self.drone)
+            await self.reboot()
+            self.mode = await self.drone.param.get_param_int("CA_AIRFRAME")
+
+        print(f"Changed mode to {self.mode}")
 
 
 async def run():
@@ -198,9 +312,9 @@ async def run():
 
         if should_change_mode:
             
-            await goat.reboot()
+            await goat.change_mode()
             # Change the mode from copter to rover and lot respective parameters
-            print("Changing mode")
+            # time.sleep(10)
 
 
 
@@ -219,18 +333,18 @@ async def run():
             await asyncio.wait_for(goat.drone.action.set_actuator(5, frame_actuators[2]), timeout_duration)
             await asyncio.wait_for(goat.drone.action.set_actuator(6, frame_actuators[3]), timeout_duration)
             
-            print(f"Messages sent: {msg_count}")
-            print(f"Loop tendons engaged: {frame_actuation.should_tension_tendon_loops}")
-            print(f"Central winches: {winch_actuators[0]}, {winch_actuators[1]}, loop winches: {frame_actuators[0]}, {frame_actuators[1]}, {frame_actuators[2]}, {frame_actuators[3]}")
+            # print(f"Messages sent: {msg_count}")
+            # print(f"Loop tendons engaged: {frame_actuation.should_tension_tendon_loops}")
+            # print(f"Central winches: {winch_actuators[0]}, {winch_actuators[1]}, loop winches: {frame_actuators[0]}, {frame_actuators[1]}, {frame_actuators[2]}, {frame_actuators[3]}")
             
             msg_count += 1
 
         except asyncio.TimeoutError:
-            print("A command timed out")
+            # print("A command timed out")
             pass
 
         except Exception as e:
-            print(e)
+            # print(e)
             pass
 
         # await asyncio.sleep(0.1)
