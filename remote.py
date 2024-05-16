@@ -20,6 +20,7 @@ class Input:
     def __init__(self):
         self.gamepad = self.initialize_gamepad()
         self.ps_button_pressed_time = None
+        self.ps_button_triggered = False        
         self.active_keys = []
 
     def initialize_gamepad(self):
@@ -34,7 +35,7 @@ class Input:
         try:
             self.active_keys = self.gamepad.active_keys()
         except IOError:
-            return False
+            self.active_keys = []
 
     def poll_trigger_values(self):
         l2_state = self.gamepad.absinfo(ecodes.ABS_Z)
@@ -46,7 +47,6 @@ class Input:
         return l2_value, r2_value
 
     def check_button_pressed(self):
-
         return [button for button in self.active_keys if button in (
             self.TRIANGLE_BUTTON, self.CIRCLE_BUTTON, self.SQUARE_BUTTON, self.X_BUTTON,
             self.OPTIONS_BUTTON, self.SHARE_BUTTON, self.PLAYSTATION_BUTTON)]
@@ -66,15 +66,17 @@ class Input:
             return 'DownArrow'
         return None
 
-    def check_ps_button_duration(self):
+    def is_ps_button_pressed(self):
         if self.PLAYSTATION_BUTTON in self.active_keys:
             if self.ps_button_pressed_time is None:
                 self.ps_button_pressed_time = time.time()
-            elif time.time() - self.ps_button_pressed_time > 2:
-                print("PlayStation button pressed for more than 2 seconds")
-                self.ps_button_pressed_time = None  # Reset to avoid repeated triggers
+            elif not self.ps_button_triggered and time.time() - self.ps_button_pressed_time > 2:
+                self.ps_button_triggered = True
+                return True
         else:
-            self.ps_button_pressed_time = None  # Reset if the button is released
+            self.ps_button_pressed_time = None
+            self.ps_button_triggered = False
+        return False
 
 class FrameActuation:
     def __init__(self, button_pushed_threshold=0.1):
@@ -155,17 +157,33 @@ class WinchActuation:
 
         return [actuator_1, actuator_2]
 
+
+
+class Goat():
+    def __init__(self):
+        self.drone = None
+        
+    async def initalize(self):
+        print("Connecting...")
+        self.drone = System()
+        await self.drone.connect(system_address="udp://:14551")
+        await self.drone.core.set_mavlink_timeout(3.0)
+        print("Connected.")
+
+    async def reboot(self):
+        await self.drone.action.reboot()
+
+
 async def run():
     input_handler = Input()
+
+    goat = Goat()
+    await goat.initalize()
 
     frame_actuation = FrameActuation()
     winch_actuation = WinchActuation()
     
-    print("Connecting...")
-    drone = System()
-    await drone.connect(system_address="udp://:14551")
-    await drone.core.set_mavlink_timeout(3.0)
-    print("Connected.")
+
 
     msg_count = 0
 
@@ -175,7 +193,18 @@ async def run():
         pressed_buttons = input_handler.check_button_pressed()
         l2_value, r2_value = input_handler.poll_trigger_values()
         dpad_direction = input_handler.check_dpad_state()
-        input_handler.check_ps_button_duration()
+        should_change_mode = input_handler.is_ps_button_pressed()
+
+
+        if should_change_mode:
+            
+            await goat.reboot()
+            # Change the mode from copter to rover and lot respective parameters
+            print("Changing mode")
+
+
+
+
 
         frame_actuators = frame_actuation.update(pressed_buttons, l2_value, r2_value)
         winch_actuators = winch_actuation.update(pressed_buttons, dpad_direction)
@@ -183,12 +212,12 @@ async def run():
         try:
             timeout_duration = 0.2
 
-            await asyncio.wait_for(drone.action.set_actuator(1, winch_actuators[0]), timeout_duration)
-            await asyncio.wait_for(drone.action.set_actuator(2, winch_actuators[1]), timeout_duration)
-            await asyncio.wait_for(drone.action.set_actuator(3, frame_actuators[0]), timeout_duration)
-            await asyncio.wait_for(drone.action.set_actuator(4, frame_actuators[1]), timeout_duration)
-            await asyncio.wait_for(drone.action.set_actuator(5, frame_actuators[2]), timeout_duration)
-            await asyncio.wait_for(drone.action.set_actuator(6, frame_actuators[3]), timeout_duration)
+            await asyncio.wait_for(goat.drone.action.set_actuator(1, winch_actuators[0]), timeout_duration)
+            await asyncio.wait_for(goat.drone.action.set_actuator(2, winch_actuators[1]), timeout_duration)
+            await asyncio.wait_for(goat.drone.action.set_actuator(3, frame_actuators[0]), timeout_duration)
+            await asyncio.wait_for(goat.drone.action.set_actuator(4, frame_actuators[1]), timeout_duration)
+            await asyncio.wait_for(goat.drone.action.set_actuator(5, frame_actuators[2]), timeout_duration)
+            await asyncio.wait_for(goat.drone.action.set_actuator(6, frame_actuators[3]), timeout_duration)
             
             print(f"Messages sent: {msg_count}")
             print(f"Loop tendons engaged: {frame_actuation.should_tension_tendon_loops}")
