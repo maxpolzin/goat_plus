@@ -1,188 +1,203 @@
 #!/usr/bin/env python3
 
 import asyncio
+import time
 from evdev import InputDevice, ecodes, list_devices
 from mavsdk import System
 
+class GamepadNotFoundError(Exception):
+    pass
 
-async def find_gamepad_device():
-    devices = [InputDevice(path) for path in list_devices()]
-    for device in devices:
-        if 'Wireless Controller' in device.name:
-            return device.path
-    return None
+class Input:
+    TRIANGLE_BUTTON = ecodes.BTN_NORTH
+    CIRCLE_BUTTON = ecodes.BTN_EAST
+    SQUARE_BUTTON = ecodes.BTN_WEST
+    X_BUTTON = ecodes.BTN_SOUTH
+    OPTIONS_BUTTON = ecodes.BTN_START
+    SHARE_BUTTON = ecodes.BTN_SELECT
+    PLAYSTATION_BUTTON = ecodes.BTN_MODE
 
-async def poll_trigger_values(device):
-    l2_state = device.absinfo(ecodes.ABS_Z)
-    r2_state = device.absinfo(ecodes.ABS_RZ)
+    def __init__(self):
+        self.gamepad = self.initialize_gamepad()
+        self.ps_button_pressed_time = None
 
-    l2_value = l2_state.value / 255.0 if l2_state else 0
-    r2_value = r2_state.value / 255.0 if r2_state else 0
+    def initialize_gamepad(self):
+        devices = [InputDevice(path) for path in list_devices()]
+        for device in devices:
+            if 'Wireless Controller' in device.name:
+                print(f"Found gamepad at: {device.path}")
+                return InputDevice(device.path)
+        raise GamepadNotFoundError("No gamepad found.")
 
-    return l2_value, r2_value
+    async def poll_trigger_values(self):
+        l2_state = self.gamepad.absinfo(ecodes.ABS_Z)
+        r2_state = self.gamepad.absinfo(ecodes.ABS_RZ)
 
-async def check_button_pressed(device, button_codes):
-    try:
-        current = device.active_keys()
-    except IOError:
-        return False
+        l2_value = l2_state.value / 255.0 if l2_state else 0
+        r2_value = r2_state.value / 255.0 if r2_state else 0
 
-    def intersection(lst1, lst2):
-        lst3 = [value for value in lst1 if value in lst2]
-        return lst3
-    return intersection(button_codes,current)
+        return l2_value, r2_value
 
-async def check_dpad_state(device):
-    """Check the state of the D-pad (directional pad)."""
-    dpad_x = device.absinfo(ecodes.ABS_HAT0X)
-    dpad_y = device.absinfo(ecodes.ABS_HAT0Y)
+    async def check_button_pressed(self):
+        try:
+            current = self.gamepad.active_keys()
+        except IOError:
+            return False
 
-    if dpad_x and dpad_x.value == -1:
-        return 'LeftArrow'
-    elif dpad_x and dpad_x.value == 1:
-        return 'RightArrow'
-    elif dpad_y and dpad_y.value == -1:
-        return 'UpArrow'
-    elif dpad_y and dpad_y.value == 1:
-        return 'DownArrow'
-    return None
+        return [button for button in current if button in (
+            self.TRIANGLE_BUTTON, self.CIRCLE_BUTTON, self.SQUARE_BUTTON, self.X_BUTTON,
+            self.OPTIONS_BUTTON, self.SHARE_BUTTON, self.PLAYSTATION_BUTTON)]
 
-async def run():
+    async def check_dpad_state(self):
+        """Check the state of the D-pad (directional pad)."""
+        dpad_x = self.gamepad.absinfo(ecodes.ABS_HAT0X)
+        dpad_y = self.gamepad.absinfo(ecodes.ABS_HAT0Y)
 
-    gamepad_device_path = await find_gamepad_device()
-    if gamepad_device_path:
-        print(f"Found gamepad at: {gamepad_device_path}")
-    else:
-        print("No gamepad found.")
-        return
+        if dpad_x and dpad_x.value == -1:
+            return 'LeftArrow'
+        elif dpad_x and dpad_x.value == 1:
+            return 'RightArrow'
+        elif dpad_y and dpad_y.value == -1:
+            return 'UpArrow'
+        elif dpad_y and dpad_y.value == 1:
+            return 'DownArrow'
+        return None
 
-    gamepad = InputDevice(gamepad_device_path)
-    should_tension_tendon_loops = False  
+    async def check_ps_button_duration(self):
+        """Check if the PlayStation button is pressed for more than 5 seconds."""
+        current = self.gamepad.active_keys()
+        if self.PLAYSTATION_BUTTON in current:
+            if self.ps_button_pressed_time is None:
+                self.ps_button_pressed_time = time.time()
+            elif time.time() - self.ps_button_pressed_time > 5:
+                print("PlayStation button pressed for more than 5 seconds")
+                self.ps_button_pressed_time = None  # Reset to avoid repeated triggers
+        else:
+            self.ps_button_pressed_time = None  # Reset if the button is released
 
-    drone = System()
+class FrameActuation:
+    def __init__(self, button_pushed_threshold=0.1):
+        self.should_tension_tendon_loops = False
+        self.prev_share_button_state = False
+        self.button_pushed_threshold = button_pushed_threshold
 
-    print("Connecting...")
-    # await drone.connect(system_address="serial:///dev/ttyUSB0:57600")
-    # await drone.connect(system_address="tcp://localhost:5760")
-    # await drone.connect(system_address="tcp://192.168.2.1:5760")
-    # await drone.connect(system_address="udp://192.168.2.1:14550")
-    await drone.connect(system_address="udp://:14551")
-    print("Connected.")
+    def update(self, pressed_buttons, l2_value, r2_value):
+        share_button_state = Input.SHARE_BUTTON in pressed_buttons
+        if share_button_state and not self.prev_share_button_state:
+            self.should_tension_tendon_loops = not self.should_tension_tendon_loops
+        self.prev_share_button_state = share_button_state
 
-    await drone.core.set_mavlink_timeout(3.0)
-
-
-    actuator_values = {
-        'Triangle': (1, 1),
-        'Circle': (1, -1),
-        'Square': (-1, 1),
-        'X': (-1, -1),
-        'LeftArrow': (-1, 0),
-        'RightArrow': (1, 0),
-        'UpArrow': (0, 1),
-        'DownArrow': (0, -1)
-    }
-
-    button_mappings = {
-        ecodes.BTN_NORTH: 'Triangle',
-        ecodes.BTN_EAST: 'Circle',
-        ecodes.BTN_WEST: 'Square',
-        ecodes.BTN_SOUTH: 'X',
-        ecodes.BTN_START: 'Options',
-        ecodes.BTN_SELECT: 'Share'
-    }
-
-    msg_count = 0
-
-    while True:
-
-        pressed_buttons = await check_button_pressed(gamepad, button_mappings.keys())
-
-        l2_value, r2_value = await poll_trigger_values(gamepad)
-
-        share_button_state = ecodes.BTN_SELECT in pressed_buttons
-
-        if share_button_state and not prev_share_button_state:
-            should_tension_tendon_loops = not should_tension_tendon_loops
-        prev_share_button_state = share_button_state
-
-
-        button_pushed_threshold = 0.1
-
-        if ecodes.BTN_START in pressed_buttons:
+        if Input.OPTIONS_BUTTON in pressed_buttons:
             loop_tendon_1 = -0.4
             loop_tendon_2 = -0.4
-        elif l2_value > button_pushed_threshold and r2_value > button_pushed_threshold:
-            loop_tendon_1 = (l2_value+r2_value)/2
-            loop_tendon_2 = (l2_value+r2_value)/2
-        elif l2_value > button_pushed_threshold:
+        elif l2_value > self.button_pushed_threshold and r2_value > self.button_pushed_threshold:
+            loop_tendon_1 = (l2_value + r2_value) / 2
+            loop_tendon_2 = (l2_value + r2_value) / 2
+        elif l2_value > self.button_pushed_threshold:
             loop_tendon_1 = l2_value
-            loop_tendon_2 = -l2_value/10.0
-        elif r2_value > button_pushed_threshold:
-            loop_tendon_1 = -r2_value/10.0
+            loop_tendon_2 = -l2_value / 10.0
+        elif r2_value > self.button_pushed_threshold:
+            loop_tendon_1 = -r2_value / 10.0
             loop_tendon_2 = r2_value
-        else: 
-            if should_tension_tendon_loops:
+        else:
+            if self.should_tension_tendon_loops:
                 loop_tendon_1 = 0.5
                 loop_tendon_2 = 0.5
             else:
                 loop_tendon_1 = 0.0
                 loop_tendon_2 = 0.0
 
-
-
-
-        # Map normalized velocities to actuator values
         no_motion = -1.0
-        
+
         def map_to_actuator_value(value):
-            return 2*abs(value) - 1.0
+            return 2 * abs(value) - 1.0
+
+        actuator_commands = [0] * 4
 
         if loop_tendon_1 >= 0:
-            actuator_3 = map_to_actuator_value(loop_tendon_1)
-            actuator_4 = no_motion
-        elif loop_tendon_1 < 0:
-            actuator_3 = no_motion
-            actuator_4 = map_to_actuator_value(loop_tendon_1)
+            actuator_commands[0] = map_to_actuator_value(loop_tendon_1)
+            actuator_commands[1] = no_motion
+        else:
+            actuator_commands[0] = no_motion
+            actuator_commands[1] = map_to_actuator_value(loop_tendon_1)
 
         if loop_tendon_2 >= 0:
-            actuator_5 = map_to_actuator_value(loop_tendon_2)
-            actuator_6 = no_motion
-        elif loop_tendon_2 < 0:
-            actuator_5 = no_motion
-            actuator_6 = map_to_actuator_value(loop_tendon_2)
+            actuator_commands[2] = map_to_actuator_value(loop_tendon_2)
+            actuator_commands[3] = no_motion
+        else:
+            actuator_commands[2] = no_motion
+            actuator_commands[3] = map_to_actuator_value(loop_tendon_2)
 
-   
+        return actuator_commands
 
+class WinchActuation:
+    def __init__(self):
+        self.actuator_values = {
+            Input.TRIANGLE_BUTTON: (1, 1),
+            Input.CIRCLE_BUTTON: (1, -1),
+            Input.SQUARE_BUTTON: (-1, 1),
+            Input.X_BUTTON: (-1, -1),
+            'LeftArrow': (-1, 0),
+            'RightArrow': (1, 0),
+            'UpArrow': (0, 1),
+            'DownArrow': (0, -1)
+        }
+
+    def update(self, pressed_buttons, dpad_direction):
         actuator_1, actuator_2 = 0, 0
         for button in pressed_buttons:
-            name = button_mappings[button]
-            if name in actuator_values:
-                actuator_1, actuator_2 = actuator_values[name]
+            if button in self.actuator_values:
+                actuator_1, actuator_2 = self.actuator_values[button]
 
-        dpad_direction = await check_dpad_state(gamepad)
         if dpad_direction:
-            actuator_1, actuator_2 = actuator_values[dpad_direction]
+            actuator_1, actuator_2 = self.actuator_values[dpad_direction]
 
+        return [actuator_1, actuator_2]
+
+async def run():
+    input_handler = Input()
+
+    frame_actuation = FrameActuation()
+    winch_actuation = WinchActuation()
+    
+    drone = System()
+
+    print("Connecting...")
+    await drone.connect(system_address="udp://:14551")
+    print("Connected.")
+
+    await drone.core.set_mavlink_timeout(3.0)
+
+    msg_count = 0
+
+    while True:
+        pressed_buttons = await input_handler.check_button_pressed()
+        l2_value, r2_value = await input_handler.poll_trigger_values()
+        dpad_direction = await input_handler.check_dpad_state()
+
+        frame_actuators = frame_actuation.update(pressed_buttons, l2_value, r2_value)
+        winch_actuators = winch_actuation.update(pressed_buttons, dpad_direction)
+
+        # Check if the PlayStation button is pressed for more than 5 seconds
+        await input_handler.check_ps_button_duration()
 
         try:
-            await drone.action.set_actuator(1, actuator_1)
-            await drone.action.set_actuator(2, actuator_2)
-            await drone.action.set_actuator(3, actuator_3)
-            await drone.action.set_actuator(4, actuator_4)
-            await drone.action.set_actuator(5, actuator_5)
-            await drone.action.set_actuator(6, actuator_6)
+            await drone.action.set_actuator(1, winch_actuators[0])
+            await drone.action.set_actuator(2, winch_actuators[1])
+            await drone.action.set_actuator(3, frame_actuators[0])
+            await drone.action.set_actuator(4, frame_actuators[1])
+            await drone.action.set_actuator(5, frame_actuators[2])
+            await drone.action.set_actuator(6, frame_actuators[3])
             print(f"Messages sent: {msg_count}")
-            print(f"Loop tendons engaged: {should_tension_tendon_loops}")
-            print(f"Central winches: {actuator_1}, {actuator_2}, loop winches: {actuator_3}, {actuator_4}, {actuator_5}, {actuator_6}")
-            msg_count = msg_count+1
+            print(f"Loop tendons engaged: {frame_actuation.should_tension_tendon_loops}")
+            print(f"Central winches: {winch_actuators[0]}, {winch_actuators[1]}, loop winches: {frame_actuators[0]}, {frame_actuators[1]}, {frame_actuators[2]}, {frame_actuators[3]}")
+            msg_count += 1
 
         except Exception as e:
             print(e)
             pass
 
-        # await asyncio.sl1eep(0.1)
-
+        # await asyncio.sleep(0.1)
 
 if __name__ == "__main__":
     asyncio.run(run())
