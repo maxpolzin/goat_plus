@@ -20,6 +20,7 @@ class Input:
     def __init__(self):
         self.gamepad = self.initialize_gamepad()
         self.ps_button_pressed_time = None
+        self.active_keys = []
 
     def initialize_gamepad(self):
         devices = [InputDevice(path) for path in list_devices()]
@@ -29,7 +30,13 @@ class Input:
                 return InputDevice(device.path)
         raise GamepadNotFoundError("No gamepad found.")
 
-    async def poll_trigger_values(self):
+    def update(self):
+        try:
+            self.active_keys = self.gamepad.active_keys()
+        except IOError:
+            return False
+
+    def poll_trigger_values(self):
         l2_state = self.gamepad.absinfo(ecodes.ABS_Z)
         r2_state = self.gamepad.absinfo(ecodes.ABS_RZ)
 
@@ -38,17 +45,13 @@ class Input:
 
         return l2_value, r2_value
 
-    async def check_button_pressed(self):
-        try:
-            current = self.gamepad.active_keys()
-        except IOError:
-            return False
+    def check_button_pressed(self):
 
-        return [button for button in current if button in (
+        return [button for button in self.active_keys if button in (
             self.TRIANGLE_BUTTON, self.CIRCLE_BUTTON, self.SQUARE_BUTTON, self.X_BUTTON,
             self.OPTIONS_BUTTON, self.SHARE_BUTTON, self.PLAYSTATION_BUTTON)]
 
-    async def check_dpad_state(self):
+    def check_dpad_state(self):
         """Check the state of the D-pad (directional pad)."""
         dpad_x = self.gamepad.absinfo(ecodes.ABS_HAT0X)
         dpad_y = self.gamepad.absinfo(ecodes.ABS_HAT0Y)
@@ -63,14 +66,12 @@ class Input:
             return 'DownArrow'
         return None
 
-    async def check_ps_button_duration(self):
-        """Check if the PlayStation button is pressed for more than 5 seconds."""
-        current = self.gamepad.active_keys()
-        if self.PLAYSTATION_BUTTON in current:
+    def check_ps_button_duration(self):
+        if self.PLAYSTATION_BUTTON in self.active_keys:
             if self.ps_button_pressed_time is None:
                 self.ps_button_pressed_time = time.time()
-            elif time.time() - self.ps_button_pressed_time > 5:
-                print("PlayStation button pressed for more than 5 seconds")
+            elif time.time() - self.ps_button_pressed_time > 2:
+                print("PlayStation button pressed for more than 2 seconds")
                 self.ps_button_pressed_time = None  # Reset to avoid repeated triggers
         else:
             self.ps_button_pressed_time = None  # Reset if the button is released
@@ -160,38 +161,44 @@ async def run():
     frame_actuation = FrameActuation()
     winch_actuation = WinchActuation()
     
-    drone = System()
-
     print("Connecting...")
+    drone = System()
     await drone.connect(system_address="udp://:14551")
-    print("Connected.")
-
     await drone.core.set_mavlink_timeout(3.0)
+    print("Connected.")
 
     msg_count = 0
 
     while True:
-        pressed_buttons = await input_handler.check_button_pressed()
-        l2_value, r2_value = await input_handler.poll_trigger_values()
-        dpad_direction = await input_handler.check_dpad_state()
+
+        input_handler.update()
+        pressed_buttons = input_handler.check_button_pressed()
+        l2_value, r2_value = input_handler.poll_trigger_values()
+        dpad_direction = input_handler.check_dpad_state()
+        input_handler.check_ps_button_duration()
 
         frame_actuators = frame_actuation.update(pressed_buttons, l2_value, r2_value)
         winch_actuators = winch_actuation.update(pressed_buttons, dpad_direction)
-
-        # Check if the PlayStation button is pressed for more than 5 seconds
-        await input_handler.check_ps_button_duration()
-
+        
         try:
-            await drone.action.set_actuator(1, winch_actuators[0])
-            await drone.action.set_actuator(2, winch_actuators[1])
-            await drone.action.set_actuator(3, frame_actuators[0])
-            await drone.action.set_actuator(4, frame_actuators[1])
-            await drone.action.set_actuator(5, frame_actuators[2])
-            await drone.action.set_actuator(6, frame_actuators[3])
+            timeout_duration = 0.2
+
+            await asyncio.wait_for(drone.action.set_actuator(1, winch_actuators[0]), timeout_duration)
+            await asyncio.wait_for(drone.action.set_actuator(2, winch_actuators[1]), timeout_duration)
+            await asyncio.wait_for(drone.action.set_actuator(3, frame_actuators[0]), timeout_duration)
+            await asyncio.wait_for(drone.action.set_actuator(4, frame_actuators[1]), timeout_duration)
+            await asyncio.wait_for(drone.action.set_actuator(5, frame_actuators[2]), timeout_duration)
+            await asyncio.wait_for(drone.action.set_actuator(6, frame_actuators[3]), timeout_duration)
+            
             print(f"Messages sent: {msg_count}")
             print(f"Loop tendons engaged: {frame_actuation.should_tension_tendon_loops}")
             print(f"Central winches: {winch_actuators[0]}, {winch_actuators[1]}, loop winches: {frame_actuators[0]}, {frame_actuators[1]}, {frame_actuators[2]}, {frame_actuators[3]}")
+            
             msg_count += 1
+
+        except asyncio.TimeoutError:
+            print("A command timed out")
+            pass
 
         except Exception as e:
             print(e)
