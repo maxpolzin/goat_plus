@@ -186,7 +186,7 @@ class ParamList:
 
 class ParamHandler:
     def __init__(self):
-        self.copter_params = ParamList("px4_flying_goat_v1.15-beta1.params")
+        self.copter_params = ParamList("px4_flying_goat_v1.15-beta1-short.params")
         self.rover_params = ParamList("px4_driving_goat_v1.15-beta1.params")
 
         self.differences = self.find_param_differences()
@@ -233,8 +233,7 @@ class ParamHandler:
                         await drone.param.set_param_float(name, value)
                     else:  # Assuming custom parameters need specific handling
                         await drone.param.set_param_custom(name, value)
-        time.sleep(1)
-
+        print("Parameters uploaded.")
 
 
 class Goat():
@@ -268,21 +267,21 @@ class Goat():
         if self.mode == self.COPTER:
             await self.drone.param.set_param_int("CA_AIRFRAME", self.ROVER)
             await self.reboot()
+            time.sleep(10)     
 
-            time.sleep(10)
-                            
             await self.param_handler.upload_differing_and_missing_rover_params(self.drone)
             await self.reboot()
+
             self.mode = await self.drone.param.get_param_int("CA_AIRFRAME")
 
         else:
             await self.drone.param.set_param_int("CA_AIRFRAME", self.COPTER)
             await self.reboot()
-
             time.sleep(10)
 
             await self.param_handler.upload_differing_and_missing_copter_params(self.drone)
             await self.reboot()
+
             self.mode = await self.drone.param.get_param_int("CA_AIRFRAME")
 
         print(f"Changed mode to {self.mode}")
