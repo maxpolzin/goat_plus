@@ -2,6 +2,7 @@
 
 import asyncio
 import time
+import socket
 from evdev import InputDevice, ecodes, list_devices
 from mavsdk import System
 from tqdm import tqdm
@@ -210,31 +211,44 @@ class ParamHandler:
 
         return differences
 
-
-
     async def upload_differing_and_missing_copter_params(self, drone):
         await self.upload_params(drone, self.copter_params.params)
 
     async def upload_differing_and_missing_rover_params(self, drone):
         await self.upload_params(drone, self.rover_params.params)
 
+
     async def upload_params(self, drone, param_list):
         print("Uploading parameters to the drone...")
-        for param_type in ['int', 'float', 'custom']:
-            for name in self.differences[param_type]:
-                # Check if the parameter exists in the param_list before uploading
-                if name in param_list[param_type]:
-                    value = param_list[param_type][name]
-                    if param_type == 'int':
-                        print(f"Setting {name} to {value}")
-                        await drone.param.set_param_int(name, value)
-                    elif param_type == 'float':
-                        print(f"Setting {name} to {value}")
-                        await drone.param.set_param_float(name, value)
-                    else:  # Assuming custom parameters need specific handling
-                        await drone.param.set_param_custom(name, value)
-        print("Parameters uploaded.")
+        retry_limit = 3  # Set a retry limit for each parameter upload
 
+        for param_type in ['int', 'float', 'custom']:
+            # Create a sorted list of parameter names to upload
+            sorted_params = sorted(param_list[param_type].items(), key=lambda x: x[0])
+            
+            for name, value in sorted_params:
+                if name in self.differences[param_type]:
+                    retries = 0
+                    while retries < retry_limit:
+                        try:
+                            if param_type == 'int':
+                                print(f"Setting {name} to {value}")
+                                await drone.param.set_param_int(name, value)
+                            elif param_type == 'float':
+                                print(f"Setting {name} to {value}")
+                                await drone.param.set_param_float(name, value)
+                            else:
+                                # Assuming custom parameters need specific handling
+                                await drone.param.set_param_custom(name, value)
+                            break  # Exit retry loop if successful
+                        except Exception as e:
+                            print(f"Error setting {name}: {e}")
+                            retries += 1
+                            await asyncio.sleep(1)  # Wait a bit before retrying
+
+                    if retries == retry_limit:
+                        print(f"Failed to set {name} after {retry_limit} attempts.")
+        print("Parameters uploaded.")
 
 class Goat():
 
@@ -243,15 +257,19 @@ class Goat():
 
     def __init__(self):
         self.drone = None
+        self.ip = "192.168.2.1"
         self.param_handler = ParamHandler()
         differences = self.param_handler.find_param_differences()
 
 
-    async def initalize(self):
+    async def initialize(self):
         print("Connecting...")
+
         self.drone = System()
-        await self.drone.connect(system_address="udp://:14551")
-        await self.drone.core.set_mavlink_timeout(3.0)
+        self.wait_for_ip(self.ip, 5760)
+        await self.drone.connect(system_address=f"tcp://{self.ip}")
+
+        await self.drone.core.set_mavlink_timeout(5.0)
         
         self.mode = await self.drone.param.get_param_int("CA_AIRFRAME")
 
@@ -261,28 +279,48 @@ class Goat():
     async def reboot(self):
         await self.drone.action.reboot()
 
-    
+
+    def wait_for_ip(self, ip_address, port, timeout=60):
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(1)  # Set a timeout on the blocking socket connect call
+                try:
+                    s.connect((ip_address, port))
+                    print(f"{ip_address} is now reachable on port {port}.")
+                    return True
+                except socket.timeout:
+                    print(f"Timeout connecting to {ip_address} on port {port}.")
+                except socket.error as err:
+                    print(f"Failed to connect to {ip_address} on port {port}: {err}")
+                time.sleep(1)  # Wait a brief period before trying again
+
+        print(f"Timeout reached. {ip_address} is not reachable after {timeout} seconds.")
+        return False
+
+
     async def change_mode(self):
         print("Changing mode...")
+
+        # to rover
         if self.mode == self.COPTER:
             await self.drone.param.set_param_int("CA_AIRFRAME", self.ROVER)
-            await self.reboot()
-            time.sleep(10)     
+            await self.drone.param.set_param_int("SYS_AUTOSTART", 50003)
+            params = self.param_handler.rover_params.params
 
-            await self.param_handler.upload_differing_and_missing_rover_params(self.drone)
-            await self.reboot()
-
-            self.mode = await self.drone.param.get_param_int("CA_AIRFRAME")
-
+        # to copter
         else:
             await self.drone.param.set_param_int("CA_AIRFRAME", self.COPTER)
-            await self.reboot()
-            time.sleep(10)
+            await self.drone.param.set_param_int("SYS_AUTOSTART", 4001)
+            params = self.param_handler.copter_params.params
 
-            await self.param_handler.upload_differing_and_missing_copter_params(self.drone)
-            await self.reboot()
+        await self.reboot()
+        time.sleep(3)
+        await self.initialize()
 
-            self.mode = await self.drone.param.get_param_int("CA_AIRFRAME")
+        await self.param_handler.upload_params(self.drone, params)
+
+        self.mode = await self.drone.param.get_param_int("CA_AIRFRAME")
 
         print(f"Changed mode to {self.mode}")
 
@@ -291,12 +329,11 @@ async def run():
     input_handler = Input()
 
     goat = Goat()
-    await goat.initalize()
+    await goat.initialize()
 
     frame_actuation = FrameActuation()
     winch_actuation = WinchActuation()
     
-
 
     msg_count = 0
 
@@ -308,16 +345,8 @@ async def run():
         dpad_direction = input_handler.check_dpad_state()
         should_change_mode = input_handler.is_ps_button_pressed()
 
-
-        if should_change_mode:
-            
+        if should_change_mode:            
             await goat.change_mode()
-            # Change the mode from copter to rover and lot respective parameters
-            # time.sleep(10)
-
-
-
-
 
         frame_actuators = frame_actuation.update(pressed_buttons, l2_value, r2_value)
         winch_actuators = winch_actuation.update(pressed_buttons, dpad_direction)
