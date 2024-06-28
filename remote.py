@@ -10,6 +10,7 @@ from tqdm import tqdm
 class GamepadNotFoundError(Exception):
     pass
 
+
 class Input:
     TRIANGLE_BUTTON = ecodes.BTN_NORTH
     CIRCLE_BUTTON = ecodes.BTN_EAST
@@ -80,6 +81,7 @@ class Input:
             self.ps_button_triggered = False
         return False
 
+
 class FrameActuation:
     def __init__(self, button_pushed_threshold=0.1):
         self.should_tension_tendon_loops = False
@@ -134,6 +136,7 @@ class FrameActuation:
             actuator_commands[3] = map_to_actuator_value(loop_tendon_2)
 
         return actuator_commands
+
 
 class WinchActuation:
     def __init__(self):
@@ -249,6 +252,7 @@ class ParamHandler:
                     if retries == retry_limit:
                         print(f"Failed to set {name} after {retry_limit} attempts.")
         print("Parameters uploaded.")
+
 
 class Goat():
 
