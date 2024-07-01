@@ -66,7 +66,7 @@ def fit_and_plot_polynomial(X, y, degree):
     print(f"R^2 Score: {r2}\n")
 
 # Fit and plot polynomial regressions of degree 2 and 4
-fit_and_plot_polynomial(X, y, 2)
+# fit_and_plot_polynomial(X, y, 2)
 fit_and_plot_polynomial(X, y, 4)
 
 # %%
@@ -491,8 +491,25 @@ print(f"Total Energy Consumption (J): {total_energy}")
 print(f"Total Distance Traveled (m): {total_distance}")
 print(f"Cost of Transport (dimensionless): {cost_of_transport}")
 
+
+# Calculate total flight time excluding periods with zero energy consumption
+pivot_df['time_delta'] = pivot_df['elapsed time'].diff().dt.total_seconds().fillna(0)
+pivot_df['valid_time_delta'] = pivot_df['time_delta'].where(pivot_df['power'] > 0, 0)
+
+# Calculate total flight time
+total_flight_time = pivot_df['valid_time_delta'].sum() / 60  # Convert to minutes
+
+# Calculate consumed energy in watt-hours (Wh)
+total_energy_wh = pivot_df['cumulative_energy'].iloc[-1] / 3600  # Convert from Joules
+
+print(f"Total Flight Time (minutes): {total_flight_time}")
+print(f"Total Energy Consumption (Wh): {total_energy_wh} from 71.04 (available)")
+
+
 # %%
 
+# The predicted flight time is 4.9 minutes, we are very close to that
+# Note, that I am considering the vehicle to be flying whenever the power is not zero, so also during take off
 # This is the expected Cost of Transport for the speed flown (approx. 5m/s)
 # The drone might be able to fly up to 20m/s reducing the Cost of Transport
 
