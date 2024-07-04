@@ -190,7 +190,7 @@ class ParamList:
 
 class ParamHandler:
     def __init__(self):
-        self.copter_params = ParamList("px4_flying_goat_v1.15-beta1-short.params")
+        self.copter_params = ParamList("px4_flying_goat_v1.15-beta1.params")
         self.rover_params = ParamList("px4_driving_goat_v1.15-beta1.params")
 
         self.differences = self.find_param_differences()
@@ -319,7 +319,7 @@ class Goat():
             params = self.param_handler.copter_params.params
 
         await self.reboot()
-        time.sleep(3)
+        time.sleep(5)
         await self.initialize()
 
         await self.param_handler.upload_params(self.drone, params)
