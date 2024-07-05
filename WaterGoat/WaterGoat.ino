@@ -6,8 +6,8 @@
 // #include <Adafruit_PWMServoDriver.h>
 
 
-#define I2C_SDA 1
-#define I2C_SCL 3
+#define I2C_SDA 1 //U0T
+#define I2C_SCL 3 //U0R
 
 #define PWM_LEFT 13
 #define PWM_RIGHT 12
@@ -22,7 +22,6 @@ Adafruit_INA219 ina219;
 String filename;
 
 long counter;
-bool ledState;
 
 // This callback gets called any time a new gamepad is connected.
 // Up to 4 gamepads can be connected at the same time.
@@ -76,19 +75,24 @@ void dumpGamepad(ControllerPtr ctl) {
       leftWheelCommand = leftWheelCommand * 512 / maxValue;
       rightWheelCommand = rightWheelCommand * 512 / maxValue;
 
-      const int SERVO_MIN=1000;
-      const int SERVO_MAX=2000;
+      const int SERVO_MIN=500;
+      const int SERVO_MAX=2500;
 
       // Calculate the PWM signals for the left and right motors
       int leftMotorPWM = map(leftWheelCommand, -511, 512, SERVO_MIN, SERVO_MAX);
       int rightMotorPWM = map(rightWheelCommand, -511, 512, SERVO_MIN, SERVO_MAX);
 
-      uint16_t leftMotorSignal = map(leftMotorPWM, 0, 20000, 0, 1023);
-      uint16_t rightMotorSignal = map(rightMotorPWM, 0, 20000, 0, 1023);
+      uint16_t leftMotorSignal = map(leftMotorPWM, 0, 3000, 0, 1023);
+      uint16_t rightMotorSignal = map(rightMotorPWM, 0, 3000, 0, 1023);
+
 
       // // Write PWM signals to the motors
       analogWrite(PWM_LEFT, leftMotorSignal);
       analogWrite(PWM_RIGHT, rightMotorSignal);
+
+
+
+
 
 
       // // Read current from INA219 sensor
@@ -194,34 +198,11 @@ void setup() {
     pinMode(PWM_LEFT, OUTPUT);
     pinMode(LED, OUTPUT);
 
-    uint32_t frequency = 50;  // Set the PWM frequency to 50Hz.
+    uint32_t frequency = 333;
     uint8_t resolution = 10;  // Set the resolution to 10 bits.
 
     analogWriteFrequency(frequency);  // Set the frequency.
     analogWriteResolution(resolution);  // Set the resolution.
-
-    // Init I2C-bus
-    twoWire.setPins(I2C_SDA, I2C_SCL);
-
-
-    // Initialize the PCA9685
-    // pwm = Adafruit_PWMServoDriver(PCA9685_I2C_ADDRESS, twoWire);
-    // if (! pwm.begin()) {
-    //   Serial.println("Failed to find PCA9685 PWM-Driver");
-    //   while (1) { delay(10); }
-    // }
-    // pwm.setPWMFreq(SERVO_FREQ);
-    // Serial.println("Controlling motors with PCA9685 PWM-Driver ...");
-
-
-    // Initialize the INA219.
-    if (! ina219.begin(&twoWire)) {
-      Serial.println("Failed to find INA219 chip");
-      while (1) { delay(10); }
-    }
-    Serial.println("Measuring voltage and current with INA219 ...");
-
-
 
 
 
@@ -261,8 +242,32 @@ void setup() {
       Serial.println("Failed to open file for writing");
     }
 
+
+
+    // Init I2C-bus
+    twoWire.setPins(I2C_SDA, I2C_SCL);
+
+
+    // Initialize the PCA9685
+    // pwm = Adafruit_PWMServoDriver(PCA9685_I2C_ADDRESS, twoWire);
+    // if (! pwm.begin()) {
+    //   Serial.println("Failed to find PCA9685 PWM-Driver");
+    //   while (1) { delay(10); }
+    // }
+    // pwm.setPWMFreq(SERVO_FREQ);
+    // Serial.println("Controlling motors with PCA9685 PWM-Driver ...");
+
+
+    // Initialize the INA219.
+    if (! ina219.begin(&twoWire)) {
+      Serial.println("Failed to find INA219 chip");
+      while (1) { delay(10); }
+    }
+    Serial.println("Measuring voltage and current with INA219 ...");
+
+
+
     counter = 0;
-    ledState = true;
     digitalWrite(LED, HIGH);
 }
 
@@ -299,8 +304,9 @@ void loop() {
     delay(50);
 
     if( counter%20 == 0){
-      ledState = !ledState;
-      ledState ? digitalWrite(LED, HIGH) : digitalWrite(LED, LOW);
+      digitalWrite(LED, HIGH);
+    } else {
+      digitalWrite(LED, LOW);
     }
     
     counter ++;
