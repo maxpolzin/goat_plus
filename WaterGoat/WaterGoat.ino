@@ -1,13 +1,30 @@
 #include <Bluepad32.h>
 #include "SD_MMC.h"
 #include "FS.h"
+#include <Adafruit_INA219.h>
+#include <Adafruit_PWMServoDriver.h>
+
+#include <Wire.h>
 
 // int motorPin = 12;      // left_motor
 
 #define BUILTIN_LED 4
 
+#define I2C_SDA 13
+#define I2C_SCL 16
+
+
+#define USMIN  1000
+#define USMAX  2000 
+#define SERVO_FREQ 50
 
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
+
+TwoWire twoWire = TwoWire(0);
+Adafruit_INA219 ina219;
+Adafruit_PWMServoDriver pwm; 
+
+
 
 // This callback gets called any time a new gamepad is connected.
 // Up to 4 gamepads can be connected at the same time.
@@ -49,26 +66,27 @@ void onDisconnectedController(ControllerPtr ctl) {
 }
 
 void dumpGamepad(ControllerPtr ctl) {
-    Serial.printf(
-        "idx=%d, dpad: 0x%02x, buttons: 0x%04x, axis L: %4d, %4d, axis R: %4d, %4d, brake: %4d, throttle: %4d, "
-        "misc: 0x%02x, gyro x:%6d y:%6d z:%6d, accel x:%6d y:%6d z:%6d\n",
-        ctl->index(),        // Controller Index
-        ctl->dpad(),         // DPAD
-        ctl->buttons(),      // bitmask of pressed buttons
-        ctl->axisX(),        // (-511 - 512) left X Axis
-        ctl->axisY(),        // (-511 - 512) left Y axis
-        ctl->axisRX(),       // (-511 - 512) right X axis
-        ctl->axisRY(),       // (-511 - 512) right Y axis
-        ctl->brake(),        // (0 - 1023): brake button
-        ctl->throttle(),     // (0 - 1023): throttle (AKA gas) button
-        ctl->miscButtons(),  // bitmak of pressed "misc" buttons
-        ctl->gyroX(),        // Gyro X
-        ctl->gyroY(),        // Gyro Y
-        ctl->gyroZ(),        // Gyro Z
-        ctl->accelX(),       // Accelerometer X
-        ctl->accelY(),       // Accelerometer Y
-        ctl->accelZ()        // Accelerometer Z
-    );
+    // Serial.printf(
+    //     "idx=%d, dpad: 0x%02x, buttons: 0x%04x, axis L: %4d, %4d, axis R: %4d, %4d, brake: %4d, throttle: %4d, "
+    //     "misc: 0x%02x, gyro x:%6d y:%6d z:%6d, accel x:%6d y:%6d z:%6d\n",
+    //     ctl->index(),        // Controller Index
+    //     ctl->dpad(),         // DPAD
+    //     ctl->buttons(),      // bitmask of pressed buttons
+    //     ctl->axisX(),        // (-511 - 512) left X Axis
+    //     ctl->axisY(),        // (-511 - 512) left Y axis
+    //     ctl->axisRX(),       // (-511 - 512) right X axis
+    //     ctl->axisRY(),       // (-511 - 512) right Y axis
+    //     ctl->brake(),        // (0 - 1023): brake button
+    //     ctl->throttle(),     // (0 - 1023): throttle (AKA gas) button
+    //     ctl->miscButtons(),  // bitmak of pressed "misc" buttons
+    //     ctl->gyroX(),        // Gyro X
+    //     ctl->gyroY(),        // Gyro Y
+    //     ctl->gyroZ(),        // Gyro Z
+    //     ctl->accelX(),       // Accelerometer X
+    //     ctl->accelY(),       // Accelerometer Y
+    //     ctl->accelZ()        // Accelerometer Z
+    // );
+
 }
 
 void appendFile(fs::FS &fs, const char *path, const char *message) {
@@ -152,7 +170,6 @@ void processGamepad(ControllerPtr ctl) {
 // Arduino setup function. Runs in CPU 1
 void setup() {
 
-
     Serial.begin(115200);
 
     // Initialize the SD card
@@ -171,6 +188,38 @@ void setup() {
         Serial.println("No SD card attached");
         return;
     }
+
+
+    twoWire.setPins(I2C_SDA, I2C_SCL);
+
+
+    pwm = Adafruit_PWMServoDriver(PCA9685_I2C_ADDRESS, twoWire);
+    if (! pwm.begin()) {
+      Serial.println("Failed to find PCA9685 PWM-Driver");
+      while (1) { delay(10); }
+    }
+    pwm.setPWMFreq(SERVO_FREQ);
+    Serial.println("Controlling motors with PCA9685 PWM-Driver ...");
+
+
+
+    // Initialize the INA219.
+    // By default the initialization will use the largest range (32V, 2A).  However
+    // you can call a setCalibration function to change this range (see comments).
+    if (! ina219.begin(&twoWire)) {
+      Serial.println("Failed to find INA219 chip");
+      while (1) { delay(10); }
+    }
+    // To use a slightly lower 32V, 1A range (higher precision on amps):
+    //ina219.setCalibration_32V_1A();
+    // Or to use a lower 16V, 400mA range (higher precision on volts and amps):
+    //ina219.setCalibration_16V_400mA();
+
+    Serial.println("Measuring voltage and current with INA219 ...");
+
+
+
+
 
     Serial.printf("Firmware: %s\n", BP32.firmwareVersion());
     const uint8_t* addr = BP32.localBdAddress();
