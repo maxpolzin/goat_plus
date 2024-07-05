@@ -119,7 +119,8 @@ void processGamepad(ControllerPtr ctl) {
                 // analogWrite(motorPin, 0);
 
                 appendFile(SD_MMC, "/hello.csv", "World red\n");
-
+                analogWrite(12, 20);
+                analogWrite(4, 20);
 
                 break;
             case 1:
@@ -127,7 +128,8 @@ void processGamepad(ControllerPtr ctl) {
                 ctl->setColorLED(0, 255, 127);
 
                 appendFile(SD_MMC, "/hello.csv", "World green\n");
-
+                analogWrite(12, 100);
+                analogWrite(4, 100);
                 // analogWrite(motorPin, 0);
                 break;
             case 2:
@@ -135,7 +137,8 @@ void processGamepad(ControllerPtr ctl) {
                 ctl->setColorLED(0, 0, 255);
                 // analogWrite(motorPin, 0);
                 appendFile(SD_MMC, "/hello.csv", "World blue\n");
-
+                analogWrite(12, 200);
+                analogWrite(4, 200);
                 break;
         }
         colorIdx++;
@@ -201,6 +204,9 @@ void setup() {
     pwm.setPWMFreq(SERVO_FREQ);
     Serial.println("Controlling motors with PCA9685 PWM-Driver ...");
 
+
+    pinMode(12, OUTPUT);
+    pinMode(4, OUTPUT);
 
 
     // Initialize the INA219.
