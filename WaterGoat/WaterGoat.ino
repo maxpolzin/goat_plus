@@ -21,7 +21,8 @@ Adafruit_INA219 ina219;
 // Adafruit_PWMServoDriver pwm; 
 String filename;
 
-
+long counter;
+bool ledState;
 
 // This callback gets called any time a new gamepad is connected.
 // Up to 4 gamepads can be connected at the same time.
@@ -260,8 +261,9 @@ void setup() {
       Serial.println("Failed to open file for writing");
     }
 
-
-    analogWrite(LED, 512);
+    counter = 0;
+    ledState = true;
+    digitalWrite(LED, HIGH);
 }
 
 // Arduino loop function. Runs in CPU 1
@@ -294,5 +296,12 @@ void loop() {
     // https://stackoverflow.com/questions/66278271/task-watchdog-got-triggered-the-tasks-did-not-reset-the-watchdog-in-time
 
     // vTaskDelay(1);
-    delay(100);
+    delay(50);
+
+    if( counter%20 == 0){
+      ledState = !ledState;
+      ledState ? digitalWrite(LED, HIGH) : digitalWrite(LED, LOW);
+    }
+    
+    counter ++;
 }
