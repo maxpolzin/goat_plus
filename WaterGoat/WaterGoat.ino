@@ -9,6 +9,9 @@
 #define I2C_SDA 13
 #define I2C_SCL 16
 
+#define PWM_LEFT 4
+#define PWM_RIGHT 12
+
 
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
 TwoWire twoWire = TwoWire(0);
@@ -78,7 +81,57 @@ void dumpGamepad(ControllerPtr ctl) {
     //     ctl->accelZ()        // Accelerometer Z
     // );
 
+
+
+    // convert axis commands to pwm signals for a skid steered rover
+    
+
+
+      int forwardCommand = ctl->axisY(); // -511, 512
+      int steeringCommand = ctl->axisRX(); // -511, 512
+      
+      int leftWheelCommand = forwardCommand + steeringCommand;
+      int rightWheelCommand = forwardCommand - steeringCommand;
+
+      int maxValue = max(max(abs(leftWheelCommand), abs(rightWheelCommand)), 512);
+
+      leftWheelCommand = leftWheelCommand * 512 / maxValue;
+      rightWheelCommand = rightWheelCommand * 512 / maxValue;
+
+      const int SERVO_MIN=1000;
+      const int SERVO_MAX=2000;
+
+      // Calculate the PWM signals for the left and right motors
+      int leftMotorPWM = map(leftWheelCommand, -511, 512, SERVO_MIN, SERVO_MAX);
+      int rightMotorPWM = map(rightWheelCommand, -511, 512, SERVO_MIN, SERVO_MAX);
+
+      uint16_t leftMotorSignal = map(leftMotorPWM, 0, 20000, 0, 1023);
+      uint16_t rightMotorSignal = map(rightMotorPWM, 0, 20000, 0, 1023);
+
+      // // Write PWM signals to the motors
+      analogWrite(PWM_LEFT, leftMotorSignal);
+      analogWrite(PWM_RIGHT, rightMotorSignal);
+
+
+      // // Read current from INA219 sensor
+      float current_mA = ina219.getCurrent_mA();
+
+      // Prepare the message to write to file
+      char message[100];
+      snprintf(message, sizeof(message), "Current: %.2f mA, Left PWM: %d, Right PWM: %d\n", current_mA, leftMotorPWM, rightMotorPWM);
+
+      // Write current and PWM signals to file
+      appendFile(SD_MMC, "/hello.csv", message);
+
+      // Print the message to Serial for debugging
+      Serial.print(message);
+
+
 }
+
+
+
+
 
 void appendFile(fs::FS &fs, const char *path, const char *message) {
   Serial.printf("Appending to file: %s\n", path);
@@ -88,9 +141,7 @@ void appendFile(fs::FS &fs, const char *path, const char *message) {
     Serial.println("Failed to open file for appending");
     return;
   }
-  if (file.print(message)) {
-    Serial.println("Message appended");
-  } else {
+  if (!file.print(message)) {
     Serial.println("Append failed");
   }
 }
@@ -107,43 +158,17 @@ void processGamepad(ControllerPtr ctl) {
             case 0:
                 // Red
                 ctl->setColorLED(255, 0, 0);
-                // analogWrite(motorPin, 0);
-
-                appendFile(SD_MMC, "/hello.csv", "World red\n");
-                analogWrite(12, 20);
-                analogWrite(4, 20);
-
                 break;
             case 1:
                 // Green
                 ctl->setColorLED(0, 255, 127);
-
-                appendFile(SD_MMC, "/hello.csv", "World green\n");
-                analogWrite(12, 100);
-                analogWrite(4, 100);
-                // analogWrite(motorPin, 0);
                 break;
             case 2:
                 // Blue
                 ctl->setColorLED(0, 0, 255);
-                // analogWrite(motorPin, 0);
-                appendFile(SD_MMC, "/hello.csv", "World blue\n");
-                analogWrite(12, 200);
-                analogWrite(4, 200);
                 break;
         }
         colorIdx++;
-    }
-
-    if (ctl->b()) {
-        // Turn on the 4 LED. Each bit represents one LED.
-        static int led = 0;
-        led++;
-        // Some gamepads like the DS3, DualSense, Nintendo Wii, Nintendo Switch
-        // support changing the "Player LEDs": those 4 LEDs that usually indicate
-        // the "gamepad seat".
-        // It is possible to change them by calling:
-        ctl->setPlayerLEDs(led & 0x0f);
     }
 
     if (ctl->x()) {
@@ -180,10 +205,14 @@ void setup() {
 
 
     // Output PWM from ESP32Cam directly
-    pinMode(12, OUTPUT);
-    pinMode(4, OUTPUT);
+    pinMode(PWM_RIGHT, OUTPUT);
+    pinMode(PWM_LEFT, OUTPUT);
 
+    uint32_t frequency = 50;  // Set the PWM frequency to 50Hz.
+    uint8_t resolution = 10;  // Set the resolution to 10 bits.
 
+    analogWriteFrequency(frequency);  // Set the frequency.
+    analogWriteResolution(resolution);  // Set the resolution.
 
     // Init I2C-bus
     twoWire.setPins(I2C_SDA, I2C_SCL);
