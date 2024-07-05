@@ -1,28 +1,19 @@
 #include <Bluepad32.h>
 #include "SD_MMC.h"
 #include "FS.h"
-#include <Adafruit_INA219.h>
-#include <Adafruit_PWMServoDriver.h>
-
 #include <Wire.h>
+#include <Adafruit_INA219.h>
+// #include <Adafruit_PWMServoDriver.h>
 
-// int motorPin = 12;      // left_motor
-
-#define BUILTIN_LED 4
 
 #define I2C_SDA 13
 #define I2C_SCL 16
 
 
-#define USMIN  1000
-#define USMAX  2000 
-#define SERVO_FREQ 50
-
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
-
 TwoWire twoWire = TwoWire(0);
 Adafruit_INA219 ina219;
-Adafruit_PWMServoDriver pwm; 
+// Adafruit_PWMServoDriver pwm; 
 
 
 
@@ -181,11 +172,6 @@ void setup() {
         return;
     }
 
-    // Specify that LED pin
-    pinMode(BUILTIN_LED, OUTPUT);
-    digitalWrite(BUILTIN_LED, LOW);
-
-    // Check for an SD card
     uint8_t cardType = SD_MMC.cardType();
     if (cardType == CARD_NONE){
         Serial.println("No SD card attached");
@@ -193,34 +179,31 @@ void setup() {
     }
 
 
-    twoWire.setPins(I2C_SDA, I2C_SCL);
-
-
-    pwm = Adafruit_PWMServoDriver(PCA9685_I2C_ADDRESS, twoWire);
-    if (! pwm.begin()) {
-      Serial.println("Failed to find PCA9685 PWM-Driver");
-      while (1) { delay(10); }
-    }
-    pwm.setPWMFreq(SERVO_FREQ);
-    Serial.println("Controlling motors with PCA9685 PWM-Driver ...");
-
-
+    // Output PWM from ESP32Cam directly
     pinMode(12, OUTPUT);
     pinMode(4, OUTPUT);
 
 
+
+    // Init I2C-bus
+    twoWire.setPins(I2C_SDA, I2C_SCL);
+
+
+    // Initialize the PCA9685
+    // pwm = Adafruit_PWMServoDriver(PCA9685_I2C_ADDRESS, twoWire);
+    // if (! pwm.begin()) {
+    //   Serial.println("Failed to find PCA9685 PWM-Driver");
+    //   while (1) { delay(10); }
+    // }
+    // pwm.setPWMFreq(SERVO_FREQ);
+    // Serial.println("Controlling motors with PCA9685 PWM-Driver ...");
+
+
     // Initialize the INA219.
-    // By default the initialization will use the largest range (32V, 2A).  However
-    // you can call a setCalibration function to change this range (see comments).
     if (! ina219.begin(&twoWire)) {
       Serial.println("Failed to find INA219 chip");
       while (1) { delay(10); }
     }
-    // To use a slightly lower 32V, 1A range (higher precision on amps):
-    //ina219.setCalibration_32V_1A();
-    // Or to use a lower 16V, 400mA range (higher precision on volts and amps):
-    //ina219.setCalibration_16V_400mA();
-
     Serial.println("Measuring voltage and current with INA219 ...");
 
 
