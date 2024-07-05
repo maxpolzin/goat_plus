@@ -6,11 +6,13 @@
 // #include <Adafruit_PWMServoDriver.h>
 
 
-#define I2C_SDA 13
-#define I2C_SCL 16
+#define I2C_SDA 1
+#define I2C_SCL 3
 
-#define PWM_LEFT 4
+#define PWM_LEFT 13
 #define PWM_RIGHT 12
+
+#define LED 4
 
 
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
@@ -61,32 +63,6 @@ void onDisconnectedController(ControllerPtr ctl) {
 }
 
 void dumpGamepad(ControllerPtr ctl) {
-    // Serial.printf(
-    //     "idx=%d, dpad: 0x%02x, buttons: 0x%04x, axis L: %4d, %4d, axis R: %4d, %4d, brake: %4d, throttle: %4d, "
-    //     "misc: 0x%02x, gyro x:%6d y:%6d z:%6d, accel x:%6d y:%6d z:%6d\n",
-    //     ctl->index(),        // Controller Index
-    //     ctl->dpad(),         // DPAD
-    //     ctl->buttons(),      // bitmask of pressed buttons
-    //     ctl->axisX(),        // (-511 - 512) left X Axis
-    //     ctl->axisY(),        // (-511 - 512) left Y axis
-    //     ctl->axisRX(),       // (-511 - 512) right X axis
-    //     ctl->axisRY(),       // (-511 - 512) right Y axis
-    //     ctl->brake(),        // (0 - 1023): brake button
-    //     ctl->throttle(),     // (0 - 1023): throttle (AKA gas) button
-    //     ctl->miscButtons(),  // bitmak of pressed "misc" buttons
-    //     ctl->gyroX(),        // Gyro X
-    //     ctl->gyroY(),        // Gyro Y
-    //     ctl->gyroZ(),        // Gyro Z
-    //     ctl->accelX(),       // Accelerometer X
-    //     ctl->accelY(),       // Accelerometer Y
-    //     ctl->accelZ()        // Accelerometer Z
-    // );
-
-
-
-    // convert axis commands to pwm signals for a skid steered rover
-    
-
 
       int forwardCommand = ctl->axisY(); // -511, 512
       int steeringCommand = ctl->axisRX(); // -511, 512
@@ -120,27 +96,13 @@ void dumpGamepad(ControllerPtr ctl) {
 
       // Prepare the message to write to file
       char message[100];
-      snprintf(message, sizeof(message), "%.2f,%d,%d", current_mA, leftMotorPWM, rightMotorPWM);
+      snprintf(message, sizeof(message), "%.2f,%d,%d\n", current_mA, leftMotorPWM, rightMotorPWM);
 
       // Write current and PWM signals to file
       appendFile(SD_MMC, filename.c_str(), message);
 
 }
 
-
-
-
-
-void appendFile(fs::FS &fs, const char *path, const char *message) {
-  File file = fs.open(path, FILE_APPEND);
-  if (!file) {
-    Serial.println("Failed to open file for appending");
-    return;
-  }
-  if (!file.print(message)) {
-    Serial.println("Append failed");
-  }
-}
 
 void processGamepad(ControllerPtr ctl) {
     // There are different ways to query whether a button is pressed.
@@ -196,6 +158,18 @@ String getNextFilename() {
   return filename;
 }
 
+
+void appendFile(fs::FS &fs, const char *path, const char *message) {
+  File file = fs.open(path, FILE_APPEND);
+  if (!file) {
+    Serial.println("Failed to open file for appending");
+    return;
+  }
+  if (!file.print(message)) {
+    Serial.println("Append failed");
+  }
+}
+
 // Arduino setup function. Runs in CPU 1
 void setup() {
 
@@ -217,6 +191,7 @@ void setup() {
     // Output PWM from ESP32Cam directly
     pinMode(PWM_RIGHT, OUTPUT);
     pinMode(PWM_LEFT, OUTPUT);
+    pinMode(LED, OUTPUT);
 
     uint32_t frequency = 50;  // Set the PWM frequency to 50Hz.
     uint8_t resolution = 10;  // Set the resolution to 10 bits.
@@ -285,6 +260,8 @@ void setup() {
       Serial.println("Failed to open file for writing");
     }
 
+
+    analogWrite(LED, 512);
 }
 
 // Arduino loop function. Runs in CPU 1
