@@ -1,4 +1,11 @@
 #include <Bluepad32.h>
+#include "SD_MMC.h"
+#include "FS.h"
+
+// int motorPin = 12;      // left_motor
+
+#define BUILTIN_LED 4
+
 
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
 
@@ -64,30 +71,19 @@ void dumpGamepad(ControllerPtr ctl) {
     );
 }
 
-void dumpMouse(ControllerPtr ctl) {
-    Serial.printf("idx=%d, buttons: 0x%04x, scrollWheel=0x%04x, delta X: %4d, delta Y: %4d\n",
-                   ctl->index(),        // Controller Index
-                   ctl->buttons(),      // bitmask of pressed buttons
-                   ctl->scrollWheel(),  // Scroll Wheel
-                   ctl->deltaX(),       // (-511 - 512) left X Axis
-                   ctl->deltaY()        // (-511 - 512) left Y axis
-    );
-}
+void appendFile(fs::FS &fs, const char *path, const char *message) {
+  Serial.printf("Appending to file: %s\n", path);
 
-void dumpKeyboard(ControllerPtr ctl) {
-    // TODO: Print pressed keys
-    Serial.printf("idx=%d\n", ctl->index());
-}
-
-void dumpBalanceBoard(ControllerPtr ctl) {
-    Serial.printf("idx=%d,  TL=%u, TR=%u, BL=%u, BR=%u, temperature=%d\n",
-                   ctl->index(),        // Controller Index
-                   ctl->topLeft(),      // top-left scale
-                   ctl->topRight(),     // top-right scale
-                   ctl->bottomLeft(),   // bottom-left scale
-                   ctl->bottomRight(),  // bottom-right scale
-                   ctl->temperature()   // temperature: used to adjust the scale value's precision
-    );
+  File file = fs.open(path, FILE_APPEND);
+  if (!file) {
+    Serial.println("Failed to open file for appending");
+    return;
+  }
+  if (file.print(message)) {
+    Serial.println("Message appended");
+  } else {
+    Serial.println("Append failed");
+  }
 }
 
 void processGamepad(ControllerPtr ctl) {
@@ -102,14 +98,26 @@ void processGamepad(ControllerPtr ctl) {
             case 0:
                 // Red
                 ctl->setColorLED(255, 0, 0);
+                // analogWrite(motorPin, 0);
+
+                appendFile(SD_MMC, "/hello.csv", "World red\n");
+
+
                 break;
             case 1:
                 // Green
-                ctl->setColorLED(0, 255, 0);
+                ctl->setColorLED(0, 255, 127);
+
+                appendFile(SD_MMC, "/hello.csv", "World green\n");
+
+                // analogWrite(motorPin, 0);
                 break;
             case 2:
                 // Blue
                 ctl->setColorLED(0, 0, 255);
+                // analogWrite(motorPin, 0);
+                appendFile(SD_MMC, "/hello.csv", "World blue\n");
+
                 break;
         }
         colorIdx++;
@@ -140,59 +148,34 @@ void processGamepad(ControllerPtr ctl) {
     dumpGamepad(ctl);
 }
 
-void processMouse(ControllerPtr ctl) {
-    // This is just an example.
-    if (ctl->scrollWheel() > 0) {
-        // Do Something
-    } else if (ctl->scrollWheel() < 0) {
-        // Do something else
-    }
-
-    // See "dumpMouse" for possible things to query.
-    dumpMouse(ctl);
-}
-
-void processKeyboard(ControllerPtr ctl) {
-    // This is just an example.
-    if (ctl->isKeyPressed(Keyboard_A)) {
-        // Do Something
-        Serial.println("Key 'A' pressed");
-    }
-
-    // Don't do "else" here.
-    // Multiple keys can be pressed at the same time.
-    if (ctl->isKeyPressed(Keyboard_LeftShift)) {
-        // Do something else
-        Serial.println("Key 'LEFT SHIFT' pressed");
-    }
-
-    // Don't do "else" here.
-    // Multiple keys can be pressed at the same time.
-    if (ctl->isKeyPressed(Keyboard_LeftArrow)) {
-        // Do something else
-        Serial.println("Key 'Left Arrow' pressed");
-    }
-
-    // See "dumpKeyboard" for possible things to query.
-    dumpKeyboard(ctl);
-}
-
-void processBalanceBoard(ControllerPtr ctl) {
-    // This is just an example.
-    if (ctl->topLeft() > 10000) {
-        // Do Something
-    }
-
-    // See "dumpBalanceBoard" for possible things to query.
-    dumpBalanceBoard(ctl);
-}
 
 // Arduino setup function. Runs in CPU 1
 void setup() {
+
+
     Serial.begin(115200);
+
+    // Initialize the SD card
+    if (!SD_MMC.begin("/sdcard", true)){
+        Serial.println("Failed to mount SD card");
+        return;
+    }
+
+    // Specify that LED pin
+    pinMode(BUILTIN_LED, OUTPUT);
+    digitalWrite(BUILTIN_LED, LOW);
+
+    // Check for an SD card
+    uint8_t cardType = SD_MMC.cardType();
+    if (cardType == CARD_NONE){
+        Serial.println("No SD card attached");
+        return;
+    }
+
     Serial.printf("Firmware: %s\n", BP32.firmwareVersion());
     const uint8_t* addr = BP32.localBdAddress();
     Serial.printf("BD Addr: %2X:%2X:%2X:%2X:%2X:%2X\n", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
+
 
     // Setup the Bluepad32 callbacks
     BP32.setup(&onConnectedController, &onDisconnectedController);
@@ -228,12 +211,6 @@ void loop() {
         if (myController && myController->isConnected()) {
             if (myController->isGamepad()) {
                 processGamepad(myController);
-            } else if (myController->isMouse()) {
-                processMouse(myController);
-            } else if (myController->isKeyboard()) {
-                processKeyboard(myController);
-            } else if (myController->isBalanceBoard()) {
-                processBalanceBoard(myController);
             } else {
                 Serial.printf("Data not available yet\n");
                 continue;
