@@ -17,6 +17,7 @@ ControllerPtr myControllers[BP32_MAX_GAMEPADS];
 TwoWire twoWire = TwoWire(0);
 Adafruit_INA219 ina219;
 // Adafruit_PWMServoDriver pwm; 
+String filename;
 
 
 
@@ -116,16 +117,13 @@ void dumpGamepad(ControllerPtr ctl) {
       // // Read current from INA219 sensor
       float current_mA = ina219.getCurrent_mA();
 
+
       // Prepare the message to write to file
       char message[100];
-      snprintf(message, sizeof(message), "Current: %.2f mA, Left PWM: %d, Right PWM: %d\n", current_mA, leftMotorPWM, rightMotorPWM);
+      snprintf(message, sizeof(message), "%.2f,%d,%d", current_mA, leftMotorPWM, rightMotorPWM);
 
       // Write current and PWM signals to file
-      appendFile(SD_MMC, "/hello.csv", message);
-
-      // Print the message to Serial for debugging
-      Serial.print(message);
-
+      appendFile(SD_MMC, filename.c_str(), message);
 
 }
 
@@ -134,8 +132,6 @@ void dumpGamepad(ControllerPtr ctl) {
 
 
 void appendFile(fs::FS &fs, const char *path, const char *message) {
-  Serial.printf("Appending to file: %s\n", path);
-
   File file = fs.open(path, FILE_APPEND);
   if (!file) {
     Serial.println("Failed to open file for appending");
@@ -185,6 +181,20 @@ void processGamepad(ControllerPtr ctl) {
     dumpGamepad(ctl);
 }
 
+
+String getNextFilename() {
+  String baseName = "/data_";
+  String extension = ".csv";
+  int index = 0;
+  String filename;
+
+  do {
+    filename = baseName + index + extension;
+    index++;
+  } while (SD_MMC.exists(filename));
+
+  return filename;
+}
 
 // Arduino setup function. Runs in CPU 1
 void setup() {
@@ -260,6 +270,21 @@ void setup() {
     // - Second one, which is a "vritual device", is a mouse
     // By default it is disabled.
     BP32.enableVirtualDevice(false);
+
+
+
+    // Determine the next available file name
+    filename = getNextFilename();
+    
+    // Write CSV headers
+    File file = SD_MMC.open(filename, FILE_WRITE);
+    if (file) {
+      file.println("Current (mA),Left PWM,Right PWM");
+      file.close();
+    } else {
+      Serial.println("Failed to open file for writing");
+    }
+
 }
 
 // Arduino loop function. Runs in CPU 1
@@ -292,5 +317,5 @@ void loop() {
     // https://stackoverflow.com/questions/66278271/task-watchdog-got-triggered-the-tasks-did-not-reset-the-watchdog-in-time
 
     // vTaskDelay(1);
-    delay(50);
+    delay(100);
 }
