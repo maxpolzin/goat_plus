@@ -3,18 +3,26 @@
 #include "FS.h"
 #include <Wire.h>
 #include <Adafruit_INA219.h>
-// #include <Adafruit_PWMServoDriver.h>
 
 #define EXCLUDE_INA219
 
 #define I2C_SDA 1 //U0T
 #define I2C_SCL 3 //U0R
 
-#define PWM_LEFT 13
-#define PWM_RIGHT 12
 
-#define LED 4
+#define PWM_TIMER_12_BIT  12
+#define PWM_BASE_FREQ     333
 
+#define PWM_LEFT_PIN 13
+#define PWM_LEFT_CHANNEL     0
+#define PWM_RIGHT_PIN 12
+#define PWM_RIGHT_CHANNEL     1
+
+#define LED_PIN 4
+
+
+String filename;
+long counter;
 
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
 TwoWire twoWire = TwoWire(0);
@@ -23,10 +31,15 @@ TwoWire twoWire = TwoWire(0);
   Adafruit_INA219 ina219;
 #endif
 
-// Adafruit_PWMServoDriver pwm;
-String filename;
 
-long counter;
+void ledcAnalogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255) {
+  // calculate duty, 4095 from 2 ^ 12 - 1
+  uint32_t duty = (4095 / valueMax) * min(value, valueMax);
+
+  // write duty to LEDC
+  ledcWrite(channel, duty);
+}
+
 
 // This callback gets called any time a new gamepad is connected.
 // Up to 4 gamepads can be connected at the same time.
@@ -50,6 +63,7 @@ void onConnectedController(ControllerPtr ctl) {
     }
 }
 
+
 void onDisconnectedController(ControllerPtr ctl) {
     bool foundController = false;
 
@@ -66,6 +80,7 @@ void onDisconnectedController(ControllerPtr ctl) {
         Serial.println("CALLBACK: Controller disconnected, but not found in myControllers");
     }
 }
+
 
 void dumpGamepad(ControllerPtr ctl) {
 
@@ -87,15 +102,11 @@ void dumpGamepad(ControllerPtr ctl) {
       int leftMotorPWM = map(leftWheelCommand, -511, 512, SERVO_MIN, SERVO_MAX);
       int rightMotorPWM = map(rightWheelCommand, -511, 512, SERVO_MIN, SERVO_MAX);
 
-      uint16_t leftMotorSignal = map(leftMotorPWM, 0, 3000, 0, 1023);
-      uint16_t rightMotorSignal = map(rightMotorPWM, 0, 3000, 0, 1023);
+      uint16_t leftMotorSignal = map(leftMotorPWM, 0, 3000, 0, 255);
+      uint16_t rightMotorSignal = map(rightMotorPWM, 0, 3000, 0, 255);
 
-
-      // // Write PWM signals to the motors
-      analogWrite(PWM_LEFT, leftMotorSignal);
-      analogWrite(PWM_RIGHT, rightMotorSignal);
-
-
+      ledcAnalogWrite(PWM_LEFT_CHANNEL, leftMotorSignal);
+      ledcAnalogWrite(PWM_RIGHT_CHANNEL, rightMotorSignal);
 
 
       float current_mA = 0.0;
@@ -180,6 +191,7 @@ void appendFile(fs::FS &fs, const char *path, const char *message) {
   }
 }
 
+
 // Arduino setup function. Runs in CPU 1
 void setup() {
 
@@ -198,16 +210,12 @@ void setup() {
     }
 
 
-    // Output PWM from ESP32Cam directly
-    pinMode(PWM_RIGHT, OUTPUT);
-    pinMode(PWM_LEFT, OUTPUT);
-    pinMode(LED, OUTPUT);
+    ledcSetup(PWM_LEFT_CHANNEL, PWM_BASE_FREQ, PWM_TIMER_12_BIT);
+    ledcAttachPin(PWM_LEFT_PIN, PWM_LEFT_CHANNEL);
 
-    uint32_t frequency = 333;
-    uint8_t resolution = 10;  // Set the resolution to 10 bits.
+    ledcSetup(PWM_RIGHT_CHANNEL, PWM_BASE_FREQ, PWM_TIMER_12_BIT);
+    ledcAttachPin(PWM_RIGHT_PIN, PWM_RIGHT_CHANNEL);
 
-    analogWriteFrequency(frequency);  // Set the frequency.
-    analogWriteResolution(resolution);  // Set the resolution.
 
 
 
@@ -253,30 +261,18 @@ void setup() {
     twoWire.setPins(I2C_SDA, I2C_SCL);
 
 
-    // Initialize the PCA9685
-    // pwm = Adafruit_PWMServoDriver(PCA9685_I2C_ADDRESS, twoWire);
-    // if (! pwm.begin()) {
-    //   Serial.println("Failed to find PCA9685 PWM-Driver");
-    //   while (1) { delay(10); }
-    // }
-    // pwm.setPWMFreq(SERVO_FREQ);
-    // Serial.println("Controlling motors with PCA9685 PWM-Driver ...");
-
-
 #ifndef EXCLUDE_INA219
-
-    // Initialize the INA219.
     if (! ina219.begin(&twoWire)) {
       Serial.println("Failed to find INA219 chip");
       while (1) { delay(10); }
     }
     Serial.println("Measuring voltage and current with INA219 ...");
-
 #endif
 
 
     counter = 0;
-    digitalWrite(LED, HIGH);
+    pinMode(LED_PIN, OUTPUT);
+    digitalWrite(LED_PIN, HIGH);
 }
 
 // Arduino loop function. Runs in CPU 1
@@ -311,10 +307,10 @@ void loop() {
     // vTaskDelay(1);
     delay(50);
 
-    if( counter%20 == 0){
-      digitalWrite(LED, HIGH);
+    if( counter%60 <= 3){
+      digitalWrite(LED_PIN, HIGH);
     } else {
-      digitalWrite(LED, LOW);
+      digitalWrite(LED_PIN, LOW);
     }
 
     counter ++;
