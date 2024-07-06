@@ -20,6 +20,7 @@
 
 #define LED_PIN 4
 
+#define SHUNT_MULTIPLIER 2.94042689548584
 
 String filename;
 long counter;
@@ -112,7 +113,7 @@ void dumpGamepad(ControllerPtr ctl) {
       float current_mA = 0.0;
 
 #ifndef EXCLUDE_INA219
-      current_mA = ina219.getCurrent_mA();
+      current_mA = ina219.getCurrent_mA() * SHUNT_MULTIPLIER;
 #endif
 
       // Prepare the message to write to file
