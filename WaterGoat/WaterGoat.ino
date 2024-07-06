@@ -5,6 +5,7 @@
 #include <Adafruit_INA219.h>
 // #include <Adafruit_PWMServoDriver.h>
 
+#define EXCLUDE_INA219
 
 #define I2C_SDA 1 //U0T
 #define I2C_SCL 3 //U0R
@@ -17,8 +18,12 @@
 
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
 TwoWire twoWire = TwoWire(0);
-Adafruit_INA219 ina219;
-// Adafruit_PWMServoDriver pwm; 
+
+#ifndef EXCLUDE_INA219
+  Adafruit_INA219 ina219;
+#endif
+
+// Adafruit_PWMServoDriver pwm;
 String filename;
 
 long counter;
@@ -66,7 +71,7 @@ void dumpGamepad(ControllerPtr ctl) {
 
       int forwardCommand = ctl->axisY(); // -511, 512
       int steeringCommand = ctl->axisRX(); // -511, 512
-      
+
       int leftWheelCommand = forwardCommand + steeringCommand;
       int rightWheelCommand = forwardCommand - steeringCommand;
 
@@ -93,11 +98,11 @@ void dumpGamepad(ControllerPtr ctl) {
 
 
 
+      float current_mA = 0.0;
 
-
-      // // Read current from INA219 sensor
-      float current_mA = ina219.getCurrent_mA();
-
+#ifndef EXCLUDE_INA219
+      current_mA = ina219.getCurrent_mA();
+#endif
 
       // Prepare the message to write to file
       char message[100];
@@ -232,7 +237,7 @@ void setup() {
 
     // Determine the next available file name
     filename = getNextFilename();
-    
+
     // Write CSV headers
     File file = SD_MMC.open(filename, FILE_WRITE);
     if (file) {
@@ -258,6 +263,8 @@ void setup() {
     // Serial.println("Controlling motors with PCA9685 PWM-Driver ...");
 
 
+#ifndef EXCLUDE_INA219
+
     // Initialize the INA219.
     if (! ina219.begin(&twoWire)) {
       Serial.println("Failed to find INA219 chip");
@@ -265,6 +272,7 @@ void setup() {
     }
     Serial.println("Measuring voltage and current with INA219 ...");
 
+#endif
 
 
     counter = 0;
@@ -308,6 +316,6 @@ void loop() {
     } else {
       digitalWrite(LED, LOW);
     }
-    
+
     counter ++;
 }
