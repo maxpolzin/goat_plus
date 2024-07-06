@@ -4,7 +4,7 @@
 #include <Wire.h>
 #include <Adafruit_INA219.h>
 
-#define EXCLUDE_INA219
+// #define EXCLUDE_INA219
 
 #define I2C_SDA 1 //U0T
 #define I2C_SCL 3 //U0R
@@ -307,7 +307,7 @@ void loop() {
     // vTaskDelay(1);
     delay(50);
 
-    if( counter%60 <= 3){
+    if( counter % 80 <= 3){
       digitalWrite(LED_PIN, HIGH);
     } else {
       digitalWrite(LED_PIN, LOW);
