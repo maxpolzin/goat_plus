@@ -85,8 +85,8 @@ void onDisconnectedController(ControllerPtr ctl) {
 
 void dumpGamepad(ControllerPtr ctl) {
 
-      int forwardCommand = ctl->axisY(); // -511, 512
-      int steeringCommand = ctl->axisRX(); // -511, 512
+      int forwardCommand = abs(ctl->axisY()) < 50 ? 0 : ctl->axisY(); // -511, 512
+      int steeringCommand = abs(ctl->axisRX()) < 50 ? 0 : ctl->axisRX(); // -511, 512
 
       int leftWheelCommand = forwardCommand + steeringCommand;
       int rightWheelCommand = forwardCommand - steeringCommand;
@@ -108,7 +108,6 @@ void dumpGamepad(ControllerPtr ctl) {
 
       ledcAnalogWrite(PWM_LEFT_CHANNEL, leftMotorSignal);
       ledcAnalogWrite(PWM_RIGHT_CHANNEL, rightMotorSignal);
-
 
       float current_mA = 0.0;
 
