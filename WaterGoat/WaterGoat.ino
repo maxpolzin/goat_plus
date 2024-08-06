@@ -2,13 +2,16 @@
 #include "SD_MMC.h"
 #include "FS.h"
 #include <Wire.h>
-#include <Adafruit_INA219.h>
 
-// #define EXCLUDE_INA219
+#define EXCLUDE_INA219
+
+#ifndef EXCLUDE_INA219
+  #include <Adafruit_INA219.h>
+#endif
+
 
 #define I2C_SDA 1 //U0T
 #define I2C_SCL 3 //U0R
-
 
 #define PWM_TIMER_12_BIT  12
 #define PWM_BASE_FREQ     333
