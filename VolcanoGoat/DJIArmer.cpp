@@ -7,7 +7,8 @@ DJIArmer::DJIArmer(HardwareSerial &serial, int8_t rx_pin, int8_t tx_pin)
 
 void DJIArmer::begin() {
   mspSerial.begin(115200, SERIAL_8N1, rx_pin, tx_pin);
-  while (!mspSerial);
+  while (!mspSerial)
+    ;
   msp.begin(mspSerial);
 
   delay(1000);
@@ -22,25 +23,26 @@ void DJIArmer::begin() {
   status_DJI.djiPackArmingDisabledFlags = (1 << 24);
   flightModeFlags = 0x00000002;
 
-  #ifdef DEBUG
-    Serial.println("Initialized");
-  #endif
+#ifdef DEBUG
+  Serial.println("Initialized");
+#endif
 }
 
 void DJIArmer::update() {
   if (!activityDetected) {
-    #ifdef DEBUG
-      Serial.println("Waiting for AU...");
-    #endif
+#ifdef DEBUG
+    Serial.println("Waiting for AU...");
+#endif
 
     // Wait for Air Unit to send data
-    while (!msp.activityDetected());
+    while (!msp.activityDetected())
+      ;
     activityDetected = true;
     activityDetectedMillis_MSP = millis();
 
-    #ifdef DEBUG
-      Serial.println("AU Detected, waiting (unarmedMillis) time till arm");
-    #endif
+#ifdef DEBUG
+    Serial.println("AU Detected, waiting (unarmedMillis) time till arm");
+#endif
   }
 
   uint32_t currentMillis_MSP = millis();
@@ -54,9 +56,9 @@ void DJIArmer::update() {
       setFlightModeFlags(true);
     }
 
-    #ifdef DEBUG
-      debugPrint();
-    #endif
+#ifdef DEBUG
+    debugPrint();
+#endif
 
     sendMSPToAirUnit();
   }
@@ -64,15 +66,15 @@ void DJIArmer::update() {
 
 void DJIArmer::setFlightModeFlags(bool arm) {
   if ((flightModeFlags == 0x00000002) && arm) {
-    flightModeFlags = 0x00000003;    // arm
-    #ifdef DEBUG
-      Serial.println("ARMING");
-    #endif
+    flightModeFlags = 0x00000003;  // arm
+#ifdef DEBUG
+    Serial.println("ARMING");
+#endif
   } else if ((flightModeFlags == 0x00000003) && !arm) {
-    flightModeFlags = 0x00000002;    // disarm 
-    #ifdef DEBUG
-      Serial.println("DISARMING");
-    #endif
+    flightModeFlags = 0x00000002;  // disarm
+#ifdef DEBUG
+    Serial.println("DISARMING");
+#endif
   }
 }
 

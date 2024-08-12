@@ -11,7 +11,7 @@
 
 int8_t DJI_RX_PIN = D3;
 int8_t DJI_TX_PIN = D4;
-HardwareSerial DJI_SERIAL(0); 
+HardwareSerial DJI_SERIAL(0);
 DJIArmer djiArmer(DJI_SERIAL, DJI_RX_PIN, DJI_TX_PIN);
 
 
@@ -41,7 +41,6 @@ void setup() {
 
   gamepadHandler.begin();
   motorControl.begin(LEFT_MOTOR_PIN, RIGHT_MOTOR_PIN, WINCH_MOTOR_PIN);
-
 }
 
 void loop() {

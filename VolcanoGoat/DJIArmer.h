@@ -23,10 +23,10 @@ class DJIArmer {
   char fcVariant[5] = "BTFL";
   char craftname[15] = "goat";
 
-  msp_name_t name = {0};
-  msp_fc_version_t fc_version = {0};
-  msp_fc_variant_t fc_variant = {0};
-  msp_status_DJI_t status_DJI = {0};
+  msp_name_t name = { 0 };
+  msp_fc_version_t fc_version = { 0 };
+  msp_fc_variant_t fc_variant = { 0 };
+  msp_status_DJI_t status_DJI = { 0 };
 
 public:
   DJIArmer(HardwareSerial &serial, int8_t rx_pin, int8_t tx_pin);

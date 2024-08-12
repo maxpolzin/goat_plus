@@ -1,8 +1,9 @@
 #include "GamepadHandler.h"
 
-ControllerPtr GamepadHandler::myControllers[BP32_MAX_GAMEPADS] = {nullptr};
+ControllerPtr GamepadHandler::myControllers[BP32_MAX_GAMEPADS] = { nullptr };
 
-GamepadHandler::GamepadHandler() : forwardCommand(0), steeringCommand(0) {}
+GamepadHandler::GamepadHandler()
+  : forwardCommand(0), steeringCommand(0) {}
 
 void GamepadHandler::begin() {
   BP32.setup(&GamepadHandler::onConnectedController, &GamepadHandler::onDisconnectedController);
