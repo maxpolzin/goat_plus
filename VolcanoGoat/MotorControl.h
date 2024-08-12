@@ -11,11 +11,12 @@ class MotorControl {
   const int PWM_LEFT_CHANNEL;
   const int PWM_RIGHT_CHANNEL;
   const int PWM_WINCH_CHANNEL;
+  const int PWM_CAMERA_CHANNEL;
 
 public:
-  MotorControl(int leftChannel, int rightChannel, int winchChannel);
-  void begin(int leftPin, int rightPin, int winchPin);
-  void update(int forwardCommand, int steeringCommand, int winchCommand);
+  MotorControl(int leftChannel, int rightChannel, int winchChannel, int cameraChannel);
+  void begin(int leftPin, int rightPin, int winchPin, int cameraPin);
+  void update(int forwardCommand, int steeringCommand, int winchCommand, int cameraCommand);
 
 private:
   void ledcAnalogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255);
