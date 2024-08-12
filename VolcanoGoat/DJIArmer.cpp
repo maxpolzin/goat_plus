@@ -1,11 +1,11 @@
-// DJI_Arming.cpp
+// DJIArmer.cpp
 
-#include "DJI_Arming.h"
+#include "DJIArmer.h"
 
-DJI_Arming::DJI_Arming(HardwareSerial &serial, int8_t rx_pin, int8_t tx_pin)
+DJIArmer::DJIArmer(HardwareSerial &serial, int8_t rx_pin, int8_t tx_pin)
   : mspSerial(serial), rx_pin(rx_pin), tx_pin(tx_pin) {}
 
-void DJI_Arming::begin() {
+void DJIArmer::begin() {
   mspSerial.begin(115200, SERIAL_8N1, rx_pin, tx_pin);
   while (!mspSerial);
   msp.begin(mspSerial);
@@ -27,7 +27,7 @@ void DJI_Arming::begin() {
   #endif
 }
 
-void DJI_Arming::update() {
+void DJIArmer::update() {
   if (!activityDetected) {
     #ifdef DEBUG
       Serial.println("Waiting for AU...");
@@ -62,7 +62,7 @@ void DJI_Arming::update() {
   }
 }
 
-void DJI_Arming::setFlightModeFlags(bool arm) {
+void DJIArmer::setFlightModeFlags(bool arm) {
   if ((flightModeFlags == 0x00000002) && arm) {
     flightModeFlags = 0x00000003;    // arm
     #ifdef DEBUG
@@ -76,7 +76,7 @@ void DJI_Arming::setFlightModeFlags(bool arm) {
   }
 }
 
-void DJI_Arming::sendMSPToAirUnit() {
+void DJIArmer::sendMSPToAirUnit() {
   // MSP_FC_VARIANT
   memcpy(fc_variant.flightControlIdentifier, fcVariant, sizeof(fcVariant));
   msp.send(MSP_FC_VARIANT, &fc_variant, sizeof(fc_variant));
@@ -100,7 +100,7 @@ void DJI_Arming::sendMSPToAirUnit() {
 }
 
 //*** USED ONLY FOR DEBUG ***
-void DJI_Arming::debugPrint() {
+void DJIArmer::debugPrint() {
   Serial.println("**********************************");
   Serial.print("Flight Mode: ");
   Serial.println(flightModeFlags);

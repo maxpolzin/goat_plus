@@ -1,13 +1,13 @@
-// DJI_Arming.h
+// DJIArmer.h
 
-#ifndef DJI_ARMING_H
-#define DJI_ARMING_H
+#ifndef DJI_ARMER_H
+#define DJI_ARMER_H
 
 #include <HardwareSerial.h>
 #include "MSP.h"
 #include "MSP_OSD.h"
 
-class DJI_Arming {
+class DJIArmer {
   int8_t rx_pin;
   int8_t tx_pin;
   HardwareSerial &mspSerial;
@@ -29,7 +29,7 @@ class DJI_Arming {
   msp_status_DJI_t status_DJI = {0};
 
 public:
-  DJI_Arming(HardwareSerial &serial, int8_t rx_pin, int8_t tx_pin);
+  DJIArmer(HardwareSerial &serial, int8_t rx_pin, int8_t tx_pin);
   void begin();
   void update();
 

@@ -1,6 +1,6 @@
 #include <HardwareSerial.h>
 
-#include "DJI_Arming.h"
+#include "DJIArmer.h"
 #include "SBUSReader.h"
 #include "GamepadHandler.h"
 #include "MotorControl.h"
@@ -11,22 +11,22 @@
 
 int8_t DJI_RX_PIN = D3;
 int8_t DJI_TX_PIN = D4;
-HardwareSerial DJI_SERIAL(1);  // Serial port 1
-DJI_Arming djiArming(DJI_SERIAL, DJI_RX_PIN, DJI_TX_PIN);
+HardwareSerial DJI_SERIAL(0); 
+DJIArmer djiArmer(DJI_SERIAL, DJI_RX_PIN, DJI_TX_PIN);
 
 
 int8_t SBUS_RX_PIN = D10;
 int8_t SBUS_TX_PIN = D9;
-HardwareSerial SBUS_SERIAL(0);  // Serial port 1
+HardwareSerial SBUS_SERIAL(1);
 SBUSReader sbusReader(SBUS_SERIAL, SBUS_RX_PIN, SBUS_TX_PIN);
 
 
 GamepadHandler gamepadHandler;
 
 
-int LEFT_MOTOR_PIN = 13;
-int RIGHT_MOTOR_PIN = 12;
-int WINCH_MOTOR_PIN = 14;
+int LEFT_MOTOR_PIN = D7;
+int RIGHT_MOTOR_PIN = D8;
+int WINCH_MOTOR_PIN = D9;
 int LEFT_MOTOR_PWM_CHANNEL = 0;
 int RIGHT_MOTOR_PWM_CHANNEL = 1;
 int WINCH_MOTOR_PWM_CHANNEL = 2;
@@ -36,7 +36,7 @@ MotorControl motorControl(LEFT_MOTOR_PWM_CHANNEL, RIGHT_MOTOR_PWM_CHANNEL, WINCH
 void setup() {
   Serial.begin(115200);
 
-  djiArming.begin();
+  djiArmer.begin();
   sbusReader.begin();
 
   gamepadHandler.begin();
@@ -46,7 +46,7 @@ void setup() {
 
 void loop() {
 
-  djiArming.update();
+  djiArmer.update();
   sbusReader.update();
   gamepadHandler.update();
 
