@@ -42,6 +42,10 @@ void MotorControl::update(double forwardVelocityCommand, double steeringVelocity
 
   // ledcAnalogWrite(PWM_WINCH_CHANNEL, winchMotorSignal);
 
+  int winchPulsewidth = map(winchVelocityCommand*1000, -1000, 1000, WINCH_SERVO_MIN, WINCH_SERVO_MAX);  
+  uint16_t winchServoDutyCycle = map(winchPulsewidth, 0, 1e6/PWM_WINCH_BASE_FREQ, 0, 4095);
+  ledcAnalogWrite(PWM_WINCH_CHANNEL, winchServoDutyCycle, 4095);
+
 
   int cameraPulsewidth = map(cameraPositionCommand*1000, -1000, 1000, CAMERA_SERVO_MIN, CAMERA_SERVO_MAX);  
   uint16_t cameraServoDutyCycle = map(cameraPulsewidth, 0, 1e6/PWM_CAMERA_BASE_FREQ, 0, 4095);

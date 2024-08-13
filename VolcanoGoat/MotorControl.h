@@ -10,6 +10,10 @@ class MotorControl {
   const int PWM_BASE_FREQ = 333;
   const int PWM_LEFT_CHANNEL;
   const int PWM_RIGHT_CHANNEL;
+
+  const int PWM_WINCH_BASE_FREQ = 50;
+  const int WINCH_SERVO_MIN = 1000;
+  const int WINCH_SERVO_MAX = 2000;
   const int PWM_WINCH_CHANNEL;
 
   const int PWM_CAMERA_BASE_FREQ = 50;
