@@ -3,7 +3,7 @@
 #include "SBUSReader.h"
 
 SBUSReader::SBUSReader(HardwareSerial &serial, int8_t rx_pin, int8_t tx_pin)
-  : sbus(&serial, rx_pin, tx_pin, true), forwardVelocityCommand(0), steeringVelocityCommand(0), winchVelocityCommand(0), cameraPositionCommand(0) {}
+  : sbus(&serial, rx_pin, tx_pin, true), isConnected(false), forwardVelocityCommand(0), steeringVelocityCommand(0), winchVelocityCommand(0), cameraPositionCommand(0) {}
 
 void SBUSReader::begin() {
   sbus.Begin();
@@ -13,8 +13,8 @@ void SBUSReader::begin() {
 }
 
 void SBUSReader::update() {
-  // Read SBUS data
   if (sbus.Read()) {
+    isConnected = true;
     processChannels();
   }
 }
@@ -30,16 +30,18 @@ double SBUSReader::normalize(int raw){
 void SBUSReader::processChannels() {
   bfs::SbusData data = sbus.data();
 
+  if (data.failsafe || data.lost_frame) {
+    Serial.println("SBUSReader: Failsafe active or frame lost!");
+    isConnected = false;
+    steeringVelocityCommand = 0.0;
+    forwardVelocityCommand = 0.0;
+    winchVelocityCommand = 0.0;
+    return;
+  }
+
   steeringVelocityCommand = normalize(data.ch[0]);
   forwardVelocityCommand = normalize(data.ch[1]);
   winchVelocityCommand = normalize(data.ch[3]);
   cameraPositionCommand = normalize(data.ch[4]);
-
-  if (data.failsafe || data.lost_frame) {
-    Serial.println("SBUSReader: Failsafe active or frame lost!");
-    steeringVelocityCommand = 0.0;
-    forwardVelocityCommand = 0.0;
-    winchVelocityCommand = 0.0;
-  }
 
 }

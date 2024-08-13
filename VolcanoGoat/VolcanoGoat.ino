@@ -76,5 +76,5 @@ void loop() {
 
   // Serial.println("Update...");
 
-  delay(1);
+  delay(5);
 }

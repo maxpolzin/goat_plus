@@ -18,7 +18,7 @@ public:
   double steeringVelocityCommand;
   double winchVelocityCommand;
   double cameraPositionCommand;
-
+  bool isConnected;
 
 private:
   void processChannels();
