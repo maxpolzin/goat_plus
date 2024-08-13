@@ -6,8 +6,10 @@ SBUSReader::SBUSReader(HardwareSerial &serial, int8_t rx_pin, int8_t tx_pin)
   : sbus(&serial, rx_pin, tx_pin, true) {}
 
 void SBUSReader::begin() {
-  // Initialize the SBUS communication
   sbus.Begin();
+
+  Serial.println("SBUSReader initialized.");
+
 }
 
 void SBUSReader::update() {
@@ -19,6 +21,7 @@ void SBUSReader::update() {
 
 void SBUSReader::processChannels() {
   bfs::SbusData data = sbus.data();
+
 
   // Output channel data to the serial monitor
   for (int i = 0; i < bfs::SbusData::NUM_CH; i++) {

@@ -16,8 +16,8 @@ HardwareSerial DJI_SERIAL(0);
 DJIArmer djiArmer(DJI_SERIAL, DJI_RX_PIN, DJI_TX_PIN);
 
 
-int8_t SBUS_RX_PIN = D10;
-int8_t SBUS_TX_PIN = D9;
+int8_t SBUS_RX_PIN = D5;
+int8_t SBUS_TX_PIN = D6;
 HardwareSerial SBUS_SERIAL(1);
 SBUSReader sbusReader(SBUS_SERIAL, SBUS_RX_PIN, SBUS_TX_PIN);
 
@@ -46,7 +46,7 @@ void setup() {
   Serial.println("Board starting...");
 
   djiArmer.begin();
-  // sbusReader.begin();
+  sbusReader.begin();
 
   // gamepadHandler.begin();
   // motorControl.begin(LEFT_MOTOR_PIN, RIGHT_MOTOR_PIN, WINCH_MOTOR_PIN, CAMERA_MOTOR_PIN);
@@ -56,7 +56,9 @@ void loop() {
 
   djiArmer.update();
 
-  // sbusReader.update();
+  sbusReader.update();
+
+
   // gamepadHandler.update();
 
   // // todo
@@ -73,7 +75,7 @@ void loop() {
 
   // motorControl.update(forwardCommand, steeringCommand, winchCommand, cameraCommand);
 
-  Serial.println("Update...");
+  // Serial.println("Update...");
 
-  delay(1000);
+  delay(1);
 }

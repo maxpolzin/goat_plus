@@ -648,25 +648,9 @@ public:
 
   void begin(Stream& stream, uint32_t timeout = 500);
 
-  // low level functions
-
   void send(uint8_t messageID, void* payload, uint8_t size);
-  bool recv(uint8_t* messageID, void* payload, uint8_t maxSize, uint8_t* recvSize);
 
   bool activityDetected();
-
-  bool waitFor(uint8_t messageID, void* payload, uint8_t maxSize, uint8_t* recvSize = NULL);
-
-  bool request(uint8_t messageID, void* payload, uint8_t maxSize, uint8_t* recvSize = NULL);
-
-  bool command(uint8_t messageID, void* payload, uint8_t size, bool waitACK = true);
-
-  void reset();
-
-  // high level functions
-
-  bool getActiveModes(uint32_t* activeModes);
-
 
 private:
 

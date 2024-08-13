@@ -28,7 +28,6 @@ void DJIArmer::begin() {
 void DJIArmer::update() {
 
   if (!activityDetected) {
-
     if(!msp.activityDetected()){
       return;
     }
