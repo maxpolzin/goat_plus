@@ -7,8 +7,7 @@ DJIArmer::DJIArmer(HardwareSerial &serial, int8_t rx_pin, int8_t tx_pin)
 
 void DJIArmer::begin() {
   mspSerial.begin(115200, SERIAL_8N1, rx_pin, tx_pin);
-  while (!mspSerial)
-    ;
+  while (!mspSerial){}
   msp.begin(mspSerial);
 
   delay(1000);
@@ -23,26 +22,21 @@ void DJIArmer::begin() {
   status_DJI.djiPackArmingDisabledFlags = (1 << 24);
   flightModeFlags = 0x00000002;
 
-#ifdef DEBUG
-  Serial.println("Initialized");
-#endif
+  Serial.println("DJIArmer: Waiting for DJI O3 Air Unit...");
 }
 
 void DJIArmer::update() {
-  if (!activityDetected) {
-#ifdef DEBUG
-    Serial.println("Waiting for AU...");
-#endif
 
-    // Wait for Air Unit to send data
-    while (!msp.activityDetected())
-      ;
+  if (!activityDetected) {
+
+    if(!msp.activityDetected()){
+      return;
+    }
+
     activityDetected = true;
     activityDetectedMillis_MSP = millis();
 
-#ifdef DEBUG
-    Serial.println("AU Detected, waiting (unarmedMillis) time till arm");
-#endif
+    Serial.printf("DJIArmer: DJI O3 Air Unit detected. Waiting %lu ms before arming...\n", unarmedMillis);
   }
 
   uint32_t currentMillis_MSP = millis();
@@ -50,32 +44,18 @@ void DJIArmer::update() {
   if ((uint32_t)(currentMillis_MSP - previousMillis_MSP) >= next_interval_MSP) {
     previousMillis_MSP = currentMillis_MSP;
 
-    if (currentMillis_MSP < (activityDetectedMillis_MSP + unarmedMillis)) {
-      setFlightModeFlags(false);
-    } else {
-      setFlightModeFlags(true);
+    if ((activityDetectedMillis_MSP + unarmedMillis) <= currentMillis_MSP && !isArmed) {
+      setArmFlightMode();
+      isArmed = true;
     }
-
-#ifdef DEBUG
-    debugPrint();
-#endif
 
     sendMSPToAirUnit();
   }
 }
 
-void DJIArmer::setFlightModeFlags(bool arm) {
-  if ((flightModeFlags == 0x00000002) && arm) {
-    flightModeFlags = 0x00000003;  // arm
-#ifdef DEBUG
-    Serial.println("ARMING");
-#endif
-  } else if ((flightModeFlags == 0x00000003) && !arm) {
-    flightModeFlags = 0x00000002;  // disarm
-#ifdef DEBUG
-    Serial.println("DISARMING");
-#endif
-  }
+void DJIArmer::setArmFlightMode() {
+  Serial.println("DJIArmer: Arming.");
+  flightModeFlags = 0x00000003;  // arm
 }
 
 void DJIArmer::sendMSPToAirUnit() {
@@ -103,7 +83,5 @@ void DJIArmer::sendMSPToAirUnit() {
 
 //*** USED ONLY FOR DEBUG ***
 void DJIArmer::debugPrint() {
-  Serial.println("**********************************");
-  Serial.print("Flight Mode: ");
-  Serial.println(flightModeFlags);
+  Serial.printf("DJIArmer: Flight Mode: (%lu)\n",flightModeFlags);
 }

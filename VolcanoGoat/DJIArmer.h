@@ -19,6 +19,7 @@ class DJIArmer {
   bool activityDetected = false;
   const uint32_t next_interval_MSP = 100;
   uint32_t flightModeFlags = 0x00000002;
+  bool isArmed = false;
 
   char fcVariant[5] = "BTFL";
   char craftname[15] = "goat";
@@ -34,7 +35,7 @@ public:
   void update();
 
 private:
-  void setFlightModeFlags(bool arm);
+  void setArmFlightMode();
   void sendMSPToAirUnit();
   void debugPrint();
 };

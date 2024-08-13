@@ -1,12 +1,13 @@
 #include <HardwareSerial.h>
 
+
+
+
 #include "DJIArmer.h"
 #include "SBUSReader.h"
 #include "GamepadHandler.h"
 #include "MotorControl.h"
 
-
-#define DEBUG 1  // Enable or disable debug mode
 
 
 int8_t DJI_RX_PIN = D3;
@@ -38,26 +39,41 @@ MotorControl motorControl(LEFT_MOTOR_PWM_CHANNEL, RIGHT_MOTOR_PWM_CHANNEL, WINCH
 void setup() {
   Serial.begin(115200);
 
-  djiArmer.begin();
-  sbusReader.begin();
+  while(!Serial){
+    delay(1);
+  }
 
-  gamepadHandler.begin();
-  motorControl.begin(LEFT_MOTOR_PIN, RIGHT_MOTOR_PIN, WINCH_MOTOR_PIN, CAMERA_MOTOR_PIN);
+  Serial.println("Board starting...");
+
+  djiArmer.begin();
+  // sbusReader.begin();
+
+  // gamepadHandler.begin();
+  // motorControl.begin(LEFT_MOTOR_PIN, RIGHT_MOTOR_PIN, WINCH_MOTOR_PIN, CAMERA_MOTOR_PIN);
 }
 
 void loop() {
 
   djiArmer.update();
-  sbusReader.update();
-  gamepadHandler.update();
 
-  int forwardCommand = gamepadHandler.getForwardCommand();
-  int steeringCommand = gamepadHandler.getSteeringCommand();
-  int winchCommand = 0;  
-  int cameraCommand = 0;
+  // sbusReader.update();
+  // gamepadHandler.update();
 
-  motorControl.update(forwardCommand, steeringCommand, winchCommand, cameraCommand);
+  // // todo
+  // - allow failure in sbus reader or gamepadhandler
+  // - make djiarmer optional
+  // - normalize inputs from gamepadhandler and sbusreceiver
+  // - enable controlmode priority
+    
 
+  // int forwardCommand = gamepadHandler.getForwardCommand();
+  // int steeringCommand = gamepadHandler.getSteeringCommand();
+  // int winchCommand = 0;  
+  // int cameraCommand = 0;
 
-  delay(100);
+  // motorControl.update(forwardCommand, steeringCommand, winchCommand, cameraCommand);
+
+  Serial.println("Update...");
+
+  delay(1000);
 }
