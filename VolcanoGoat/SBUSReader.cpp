@@ -51,6 +51,9 @@ void SBUSReader::processChannels() {
 
   steeringVelocityCommand = normalize(data.ch[0]);
   forwardVelocityCommand = normalize(data.ch[1]);
+  if (abs(forwardVelocityCommand) < 0.3) {
+      forwardVelocityCommand = 0.0;
+  }
   cameraPositionCommand = normalize(data.ch[3]);
   winchVelocityCommand = normalize(data.ch[4]);
 
