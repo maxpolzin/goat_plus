@@ -58,8 +58,7 @@ void loop() {
 
   sbusReader.update();
 
-
-  // gamepadHandler.update();
+  gamepadHandler.update();
 
   // // todo
   // - allow failure in sbus reader or gamepadhandler

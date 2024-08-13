@@ -7,6 +7,8 @@ class GamepadHandler {
   static ControllerPtr myControllers[BP32_MAX_GAMEPADS];
   int forwardCommand;
   int steeringCommand;
+  int winchCommand;
+  int cameraCommand;
 
 public:
   GamepadHandler();

@@ -3,7 +3,7 @@
 #include "SBUSReader.h"
 
 SBUSReader::SBUSReader(HardwareSerial &serial, int8_t rx_pin, int8_t tx_pin)
-  : sbus(&serial, rx_pin, tx_pin, true) {}
+  : sbus(&serial, rx_pin, tx_pin, true), forwardVelocityCommand(0), steeringVelocityCommand(0), winchVelocityCommand(0), cameraPositionCommand(0) {}
 
 void SBUSReader::begin() {
   sbus.Begin();
@@ -19,23 +19,27 @@ void SBUSReader::update() {
   }
 }
 
+double SBUSReader::normalize(int raw){
+  static const int MAX_VALUE=1811;
+  static const int MIN_VALUE=172;
+
+  int mapped = map(raw, MIN_VALUE, MAX_VALUE, -1000, 1000);
+  return mapped/1000.0;
+}
+
 void SBUSReader::processChannels() {
   bfs::SbusData data = sbus.data();
 
+  steeringVelocityCommand = normalize(data.ch[0]);
+  forwardVelocityCommand = normalize(data.ch[1]);
+  winchVelocityCommand = normalize(data.ch[3]);
+  cameraPositionCommand = normalize(data.ch[4]);
 
-  // Output channel data to the serial monitor
-  for (int i = 0; i < bfs::SbusData::NUM_CH; i++) {
-    Serial.print("Channel ");
-    Serial.print(i + 1);
-    Serial.print(": ");
-    Serial.println(data.ch[i]);
+  if (data.failsafe || data.lost_frame) {
+    Serial.println("SBUSReader: Failsafe active or frame lost!");
+    steeringVelocityCommand = 0.0;
+    forwardVelocityCommand = 0.0;
+    winchVelocityCommand = 0.0;
   }
 
-  // Check failsafe and frame lost status
-  if (data.failsafe) {
-    Serial.println("Failsafe active!");
-  }
-  if (data.lost_frame) {
-    Serial.println("Frame lost!");
-  }
 }

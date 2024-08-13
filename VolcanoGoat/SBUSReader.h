@@ -14,8 +14,16 @@ public:
   void begin();
   void update();
 
+  double forwardVelocityCommand;
+  double steeringVelocityCommand;
+  double winchVelocityCommand;
+  double cameraPositionCommand;
+
+
 private:
   void processChannels();
+  double normalize(int raw);
+
 };
 
 #endif
