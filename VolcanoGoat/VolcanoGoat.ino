@@ -1,13 +1,9 @@
 #include <HardwareSerial.h>
 
-
-
-
 #include "DJIArmer.h"
 #include "SBUSReader.h"
 #include "GamepadHandler.h"
 #include "MotorControl.h"
-
 
 
 int8_t DJI_RX_PIN = D3;
@@ -25,14 +21,14 @@ SBUSReader sbusReader(SBUS_SERIAL, SBUS_RX_PIN, SBUS_TX_PIN);
 GamepadHandler gamepadHandler;
 
 
-int LEFT_MOTOR_PIN = D0;
+int LEFT_MOTOR_PIN = D2;
 int RIGHT_MOTOR_PIN = D1;
-int WINCH_MOTOR_PIN = D2;
-int CAMERA_MOTOR_PIN = D3;
-int LEFT_MOTOR_PWM_CHANNEL = 0;
+int WINCH_MOTOR_PIN = D0;
+int CAMERA_MOTOR_PIN = D10;
+int LEFT_MOTOR_PWM_CHANNEL = 3;
 int RIGHT_MOTOR_PWM_CHANNEL = 1;
 int WINCH_MOTOR_PWM_CHANNEL = 2;
-int CAMERA_MOTOR_PWM_CHANNEL = 3;
+int CAMERA_MOTOR_PWM_CHANNEL = 0;
 MotorControl motorControl(LEFT_MOTOR_PWM_CHANNEL, RIGHT_MOTOR_PWM_CHANNEL, WINCH_MOTOR_PWM_CHANNEL, CAMERA_MOTOR_PWM_CHANNEL);
 
 
@@ -48,8 +44,8 @@ void setup() {
   djiArmer.begin();
   sbusReader.begin();
 
-  // gamepadHandler.begin();
-  // motorControl.begin(LEFT_MOTOR_PIN, RIGHT_MOTOR_PIN, WINCH_MOTOR_PIN, CAMERA_MOTOR_PIN);
+  gamepadHandler.begin();
+  motorControl.begin(LEFT_MOTOR_PIN, RIGHT_MOTOR_PIN, WINCH_MOTOR_PIN, CAMERA_MOTOR_PIN);
 }
 
 void loop() {
@@ -57,7 +53,6 @@ void loop() {
   djiArmer.update();
 
   sbusReader.update();
-
   gamepadHandler.update();
 
   // // todo
@@ -66,15 +61,7 @@ void loop() {
   // - normalize inputs from gamepadhandler and sbusreceiver
   // - enable controlmode priority
     
-
-  // int forwardCommand = gamepadHandler.getForwardCommand();
-  // int steeringCommand = gamepadHandler.getSteeringCommand();
-  // int winchCommand = 0;  
-  // int cameraCommand = 0;
-
-  // motorControl.update(forwardCommand, steeringCommand, winchCommand, cameraCommand);
-
-  // Serial.println("Update...");
+  motorControl.update(sbusReader.forwardVelocityCommand, sbusReader.steeringVelocityCommand, sbusReader.winchVelocityCommand, sbusReader.cameraPositionCommand);
 
   delay(5);
 }

@@ -39,7 +39,7 @@ void SBUSReader::processChannels() {
       Serial.println("SBUSReader: Failsafe active or frame lost!");
       lastPrintTime = currentTime;
     }    
-    
+
     isConnected = false;
 
     steeringVelocityCommand = 0.0;
@@ -51,7 +51,7 @@ void SBUSReader::processChannels() {
 
   steeringVelocityCommand = normalize(data.ch[0]);
   forwardVelocityCommand = normalize(data.ch[1]);
-  winchVelocityCommand = normalize(data.ch[3]);
-  cameraPositionCommand = normalize(data.ch[4]);
+  winchVelocityCommand = normalize(data.ch[4]);
+  cameraPositionCommand = normalize(data.ch[3]);
 
 }

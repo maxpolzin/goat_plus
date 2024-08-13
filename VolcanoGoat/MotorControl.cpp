@@ -14,33 +14,39 @@ void MotorControl::begin(int leftPin, int rightPin, int winchPin, int cameraPin)
   ledcSetup(PWM_WINCH_CHANNEL, PWM_BASE_FREQ, PWM_TIMER_12_BIT);
   ledcAttachPin(winchPin, PWM_WINCH_CHANNEL);
 
-  ledcSetup(PWM_CAMERA_CHANNEL, PWM_BASE_FREQ, PWM_TIMER_12_BIT);
+  ledcSetup(PWM_CAMERA_CHANNEL, PWM_CAMERA_BASE_FREQ, PWM_TIMER_12_BIT);
   ledcAttachPin(cameraPin, PWM_CAMERA_CHANNEL);
 }
 
-void MotorControl::update(int forwardCommand, int steeringCommand, int winchCommand, int cameraCommand) {
-  int leftWheelCommand = forwardCommand + steeringCommand;
-  int rightWheelCommand = forwardCommand - steeringCommand;
+void MotorControl::update(double forwardVelocityCommand, double steeringVelocityCommand, double winchVelocityCommand, double cameraPositionCommand) {
+  // double leftWheelCommand = forwardVelocityCommand + steeringVelocityCommand;
+  // double rightWheelCommand = forwardVelocityCommand - steeringVelocityCommand;
 
-  int maxValue = max(max(abs(leftWheelCommand), abs(rightWheelCommand)), 512);
+  // double maxValue = max(max(abs(leftWheelCommand), abs(rightWheelCommand)), 1.0);
 
-  leftWheelCommand = leftWheelCommand * 512 / maxValue;
-  rightWheelCommand = rightWheelCommand * 512 / maxValue;
+  // leftWheelCommand = leftWheelCommand / maxValue;
+  // rightWheelCommand = rightWheelCommand / maxValue;
 
-  int leftMotorPWM = map(leftWheelCommand, -511, 512, SERVO_MIN, SERVO_MAX);
-  int rightMotorPWM = map(rightWheelCommand, -511, 512, SERVO_MIN, SERVO_MAX);
-  int winchPWM = map(winchCommand, -511, 512, SERVO_MIN, SERVO_MAX);
-  int cameraPWM = map(cameraCommand, -511, 512, SERVO_MIN, SERVO_MAX);
+  // int leftMotorPWM = map(leftWheelCommand, -1.0, 1.0, SERVO_MIN, SERVO_MAX);
+  // int rightMotorPWM = map(rightWheelCommand, -1.0, 1.0, SERVO_MIN, SERVO_MAX);
 
-  uint16_t leftMotorSignal = map(leftMotorPWM, 0, 3000, 0, 255);
-  uint16_t rightMotorSignal = map(rightMotorPWM, 0, 3000, 0, 255);
-  uint16_t winchMotorSignal = map(winchPWM, 0, 3000, 0, 255);
-  uint16_t cameraMotorSignal = map(cameraPWM, 0, 3000, 0, 255);
+  // int winchPWM = map(winchVelocityCommand*1000, -1000, 1000, SERVO_MIN, SERVO_MAX);
 
-  ledcAnalogWrite(PWM_LEFT_CHANNEL, leftMotorSignal);
-  ledcAnalogWrite(PWM_RIGHT_CHANNEL, rightMotorSignal);
-  ledcAnalogWrite(PWM_WINCH_CHANNEL, winchMotorSignal);
-  ledcAnalogWrite(PWM_CAMERA_CHANNEL, cameraMotorSignal);
+  // uint16_t leftMotorSignal = map(leftMotorPWM, 0, 3000, 0, 255);
+  // uint16_t rightMotorSignal = map(rightMotorPWM, 0, 3000, 0, 255);
+
+  // uint16_t winchMotorSignal = map(winchPWM, 0, 3000, 0, 255);
+
+  // ledcAnalogWrite(PWM_LEFT_CHANNEL, leftMotorSignal);
+  // ledcAnalogWrite(PWM_RIGHT_CHANNEL, rightMotorSignal);
+
+  // ledcAnalogWrite(PWM_WINCH_CHANNEL, winchMotorSignal);
+
+
+  int cameraPulsewidth = map(cameraPositionCommand*1000, -1000, 1000, CAMERA_SERVO_MIN, CAMERA_SERVO_MAX);  
+  uint16_t cameraServoDutyCycle = map(cameraPulsewidth, 0, 1e6/PWM_CAMERA_BASE_FREQ, 0, 4095);
+  ledcAnalogWrite(PWM_CAMERA_CHANNEL, cameraServoDutyCycle, 4095);
+
 }
 
 void MotorControl::ledcAnalogWrite(uint8_t channel, uint32_t value, uint32_t valueMax) {
