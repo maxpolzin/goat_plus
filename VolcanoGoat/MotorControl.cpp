@@ -11,7 +11,7 @@ void MotorControl::begin(int leftPin, int rightPin, int winchPin, int cameraPin)
   ledcSetup(PWM_RIGHT_CHANNEL, PWM_BASE_FREQ, PWM_TIMER_12_BIT);
   ledcAttachPin(rightPin, PWM_RIGHT_CHANNEL);
 
-  ledcSetup(PWM_WINCH_CHANNEL, PWM_BASE_FREQ, PWM_TIMER_12_BIT);
+  ledcSetup(PWM_WINCH_CHANNEL, PWM_WINCH_BASE_FREQ, PWM_TIMER_12_BIT);
   ledcAttachPin(winchPin, PWM_WINCH_CHANNEL);
 
   ledcSetup(PWM_CAMERA_CHANNEL, PWM_CAMERA_BASE_FREQ, PWM_TIMER_12_BIT);
