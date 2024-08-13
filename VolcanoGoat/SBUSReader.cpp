@@ -28,14 +28,24 @@ double SBUSReader::normalize(int raw){
 }
 
 void SBUSReader::processChannels() {
+  static unsigned long lastPrintTime = 0;
+  unsigned long currentTime = millis();
+
   bfs::SbusData data = sbus.data();
 
   if (data.failsafe || data.lost_frame) {
-    Serial.println("SBUSReader: Failsafe active or frame lost!");
+
+    if (currentTime - lastPrintTime >= 1000) {
+      Serial.println("SBUSReader: Failsafe active or frame lost!");
+      lastPrintTime = currentTime;
+    }    
+    
     isConnected = false;
+
     steeringVelocityCommand = 0.0;
     forwardVelocityCommand = 0.0;
     winchVelocityCommand = 0.0;
+    
     return;
   }
 
