@@ -32,11 +32,24 @@ int CAMERA_MOTOR_PWM_CHANNEL = 3;
 MotorControl motorControl(LEFT_MOTOR_PWM_CHANNEL, RIGHT_MOTOR_PWM_CHANNEL, WINCH_MOTOR_PWM_CHANNEL, CAMERA_MOTOR_PWM_CHANNEL);
 
 
+bool waitForSerial(unsigned long timeoutMillis = 3000) {
+    unsigned long startMillis = millis();
+    while (!Serial) {
+        if (millis() - startMillis >= timeoutMillis) {
+            return false;
+        }
+        delay(1);
+    }
+    return true;
+}
+
 void setup() {
   Serial.begin(115200);
 
-  while(!Serial){
-    delay(1);
+  if (waitForSerial()) {
+    Serial.println("Serial connection established.");
+  } else {
+    Serial.println("Serial connection not established after 5 seconds, continuing...");
   }
 
   Serial.println("Board starting...");
