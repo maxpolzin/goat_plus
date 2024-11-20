@@ -21,20 +21,20 @@ void setup() {
     twoWire.setPins(I2C_SDA, I2C_SCL);
     
 
-    if (!ina219_pv.begin(&twoWire)) {  // Default address for first INA219
+    if (!ina219_pv.begin(&twoWire)) {
         Serial.println("Failed to find INA219 chip for PV panel");
         while (1) { delay(10); }
     }
     Serial.println("Initialized INA219 for PV panel");
 
-    if (!ina219_battery.begin(&twoWire)) {  // Secondary address for second INA219
+    if (!ina219_battery.begin(&twoWire)) {
         Serial.println("Failed to find INA219 chip for battery");
         while (1) { delay(10); }
     }
     Serial.println("Initialized INA219 for battery");
 
 
-    potentiometer.setup(); // Setup potentiometer (SG90 servo)
+    potentiometer.setup()
 }
 
 void loop() {
