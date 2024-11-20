@@ -3,7 +3,7 @@
 
 #include <Adafruit_INA219.h>
 #include "Potentiometer.h"
-#include "MPPT.h"
+#include "ChargeController.h"
 
 #define I2C_SDA 14
 #define I2C_SCL 15
@@ -15,7 +15,7 @@ Adafruit_INA219 ina219_pv(0x40);  // Sensor for PV panel
 Adafruit_INA219 ina219_battery(0x41);  // Sensor for battery
 
 Potentiometer potentiometer(PIN_SG90);
-MPPT mppt;
+ChargeController charge_controller(11.1, 12.6, 400, 80); // Trickle at 11.1V, Nominal at 12.6V, Max 400mA, Min 80mA
 
 String filename;
 
@@ -76,7 +76,7 @@ void loop() {
     float battery_current_mA = ina219_battery.getCurrent_mA();
     float battery_voltage_V = ina219_battery.getBusVoltage_V() + (ina219_battery.getShuntVoltage_mV() / 1000);
 
-    float charging_current_limit = mppt.update(pv_voltage_V, pv_current_mA);
+    float charging_current_limit = charge_controller.update(battery_voltage_V, pv_voltage_V, pv_current_mA);    
     potentiometer.setCurrent(charging_current_limit);
 
 
