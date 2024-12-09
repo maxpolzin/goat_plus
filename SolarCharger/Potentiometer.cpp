@@ -1,22 +1,30 @@
 #include "Potentiometer.h"
+#include <Arduino.h>
 
 Potentiometer::Potentiometer(int pin)
-    : min_current_(80), max_current_(400), min_pwm_(500), max_pwm_(2500), pin_(pin) {}
+    : min_current_(60), max_current_(400), min_pwm_(2500), max_pwm_(500), pin_(pin) {}
 
 void Potentiometer::setup() {
-    sg90_.setPeriodHertz(50);
-    sg90_.attach(pin_);
-    sg90_.writeMicroseconds(max_pwm_); // Start with maximum PWM (80mA equivalent)
+    pinMode(pin_, OUTPUT);
+    analogWriteFrequency(pin_, 50);
+    analogWriteResolution(12);
+    analogWrite(pin_, 0);
 }
 
 void Potentiometer::setCurrent(float current) {
-    int pwm_signal = mapCurrentToPWM(current);
-    sg90_.writeMicroseconds(pwm_signal);
+    if (current < min_current_) current = min_current_;
+    if (current > max_current_) current = max_current_;
+    int pwm_signal_us = mapCurrentToPWM(current);
+    int pwm_value = (pwm_signal_us * 4095) / 20000; // Convert microseconds to 12-bit duty cycle
+  
+    Serial.print("Input Current (mA): ");
+    Serial.print(current);
+    Serial.print(" -> Mapped PWM Signal: ");
+    Serial.println(pwm_value);
+  
+    analogWrite(pin_, pwm_value);
 }
 
 int Potentiometer::mapCurrentToPWM(float current) {
-    if (current < min_current_) return max_pwm_;
-    if (current > max_current_) return min_pwm_;
-
-    return (int)((max_pwm_ - min_pwm_) * (max_current_ - current) / (max_current_ - min_current_) + min_pwm_);
+    return (int)((current - min_current_) / (max_current_ - min_current_) * (max_pwm_ - min_pwm_) + min_pwm_);
 }
