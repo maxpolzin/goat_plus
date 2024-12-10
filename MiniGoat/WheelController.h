@@ -2,6 +2,7 @@
 #define WHEELCONTROLLER_H
 
 #include <Arduino.h>
+#include <map>
 
 class WheelController {
 public:
@@ -10,11 +11,12 @@ public:
     void update(int forwardCommand, int steeringCommand);
 
 private:
+    void setMotorSpeed(uint8_t pin1, uint8_t pin2, int speed);
+
     uint8_t _ain1, _ain2, _bin1, _bin2;
     uint8_t _pwmResolution;
     uint32_t _pwmFrequency;
-
-    void setMotorSpeed(uint8_t pin1, uint8_t pin2, int speed);
+    std::map<uint8_t, uint8_t> _channels;
 };
 
-#endif // WHEELCONTROLLER_H
+#endif

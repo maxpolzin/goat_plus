@@ -2,18 +2,18 @@
 #include "WheelController.h"
 #include "WinchController.h"
 
-#define WHEEL_AIN1_PIN D4
-#define WHEEL_AIN2_PIN D5
-#define WHEEL_BIN1_PIN D6
-#define WHEEL_BIN2_PIN D7
+#define WINCH_AIN1_PIN D3
+#define WINCH_AIN2_PIN D4
+#define WINCH_BIN1_PIN D5
+#define WINCH_BIN2_PIN D6
 
-#define WINCH_AIN1_PIN D8
-#define WINCH_AIN2_PIN D9
-#define WINCH_BIN1_PIN D10
-#define WINCH_BIN2_PIN D3
+#define WHEEL_AIN1_PIN D7
+#define WHEEL_AIN2_PIN D8
+#define WHEEL_BIN1_PIN D9
+#define WHEEL_BIN2_PIN D10
 
-WheelController wheelController(WHEEL_AIN1_PIN, WHEEL_AIN2_PIN, WHEEL_BIN1_PIN, WHEEL_BIN2_PIN);
 WinchController winchController(WINCH_AIN1_PIN, WINCH_AIN2_PIN, WINCH_BIN1_PIN, WINCH_BIN2_PIN);
+WheelController wheelController(WHEEL_AIN1_PIN, WHEEL_AIN2_PIN, WHEEL_BIN1_PIN, WHEEL_BIN2_PIN);
 
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
 
@@ -69,13 +69,17 @@ void processGamepad(ControllerPtr ctl) {
         up = false; down = true; left = false; right = true;
     }
 
-    winchController.update(up, down, left, right);
+    // winchController.update(up, down, left, right);
 
     Serial.printf("Buttons: 0x%04x, Up: %d, Down: %d, Left: %d, Right: %d\n", buttonState, up, down, left, right);
 }
 
 void setup() {
     Serial.begin(115200);
+
+    while (!Serial) {
+        delay(10);
+    }
 
     wheelController.begin();
     winchController.begin();
@@ -99,6 +103,9 @@ void loop() {
             }
         }
     }
+
+
+    wheelController.update(250, 0); 
 
     delay(50);
 }
