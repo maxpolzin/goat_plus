@@ -9,15 +9,14 @@ void WinchController::begin() {
     pinMode(_bin1, OUTPUT);
     pinMode(_bin2, OUTPUT);
 
-    ledcSetup(4, _pwmFrequency, _pwmResolution); // Channel 4 for AIN1
-    ledcSetup(5, _pwmFrequency, _pwmResolution); // Channel 5 for AIN2
-    ledcSetup(6, _pwmFrequency, _pwmResolution); // Channel 6 for BIN1
-    ledcSetup(7, _pwmFrequency, _pwmResolution); // Channel 7 for BIN2
+    // Reuse channels by sharing PWM for each winch's forward and reverse pins
+    ledcSetup(2, _pwmFrequency, _pwmResolution); // Channel 2 for Winch A
+    ledcSetup(3, _pwmFrequency, _pwmResolution); // Channel 3 for Winch B
 
-    ledcAttachPin(_ain1, 4);
-    ledcAttachPin(_ain2, 5);
-    ledcAttachPin(_bin1, 6);
-    ledcAttachPin(_bin2, 7);
+    ledcAttachPin(_ain1, 2);
+    ledcAttachPin(_ain2, 2);
+    ledcAttachPin(_bin1, 3);
+    ledcAttachPin(_bin2, 3);
 }
 
 void WinchController::update(bool up, bool down, bool left, bool right) {
@@ -40,13 +39,13 @@ void WinchController::update(bool up, bool down, bool left, bool right) {
 
 void WinchController::setWinchSpeed(uint8_t pin1, uint8_t pin2, int speed) {
     if (speed > 0) {
-        ledcWrite(pin1, speed * 4095 / 512); // Forward direction
-        ledcWrite(pin2, 0);
+        ledcWrite(2, speed * 4095 / 512); // Forward direction
+        digitalWrite(pin2, LOW);          // Ensure reverse is off
     } else if (speed < 0) {
-        ledcWrite(pin1, 0);
-        ledcWrite(pin2, -speed * 4095 / 512); // Reverse direction
+        ledcWrite(2, -speed * 4095 / 512); // Reverse direction
+        digitalWrite(pin1, LOW);          // Ensure forward is off
     } else {
-        ledcWrite(pin1, 0); // Stop
-        ledcWrite(pin2, 0);
+        digitalWrite(pin1, LOW); // Stop
+        digitalWrite(pin2, LOW);
     }
 }

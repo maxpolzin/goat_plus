@@ -9,15 +9,14 @@ void WheelController::begin() {
     pinMode(_bin1, OUTPUT);
     pinMode(_bin2, OUTPUT);
 
-    ledcSetup(0, _pwmFrequency, _pwmResolution); // Channel 0 for AIN1
-    ledcSetup(1, _pwmFrequency, _pwmResolution); // Channel 1 for AIN2
-    ledcSetup(2, _pwmFrequency, _pwmResolution); // Channel 2 for BIN1
-    ledcSetup(3, _pwmFrequency, _pwmResolution); // Channel 3 for BIN2
+    // Reuse channels by sharing PWM for each motor's forward and reverse pins
+    ledcSetup(0, _pwmFrequency, _pwmResolution); // Channel 0 for A Motor
+    ledcSetup(1, _pwmFrequency, _pwmResolution); // Channel 1 for B Motor
 
     ledcAttachPin(_ain1, 0);
-    ledcAttachPin(_ain2, 1);
-    ledcAttachPin(_bin1, 2);
-    ledcAttachPin(_bin2, 3);
+    ledcAttachPin(_ain2, 0);
+    ledcAttachPin(_bin1, 1);
+    ledcAttachPin(_bin2, 1);
 }
 
 void WheelController::update(int forwardCommand, int steeringCommand) {
@@ -30,31 +29,17 @@ void WheelController::update(int forwardCommand, int steeringCommand) {
 
     setMotorSpeed(_ain1, _ain2, leftSpeed);
     setMotorSpeed(_bin1, _bin2, rightSpeed);
-
-
-      // const int SERVO_MIN=500;
-      // const int SERVO_MAX=2500;
-
-      // int leftMotorPWM = map(leftWheelCommand, -511, 512, SERVO_MIN, SERVO_MAX);
-      // int rightMotorPWM = map(rightWheelCommand, -511, 512, SERVO_MIN, SERVO_MAX);
-
-      // uint16_t leftMotorSignal = map(leftMotorPWM, 0, 3000, 0, 255);
-      // uint16_t rightMotorSignal = map(rightMotorPWM, 0, 3000, 0, 255);
-
-      // ledcAnalogWrite(PWM_LEFT_CHANNEL, leftMotorSignal);
-      // ledcAnalogWrite(PWM_RIGHT_CHANNEL, rightMotorSignal);
-
 }
 
 void WheelController::setMotorSpeed(uint8_t pin1, uint8_t pin2, int speed) {
     if (speed > 0) {
-        ledcWrite(pin1, speed * 4095 / 512);
-        ledcWrite(pin2, 0);
+        ledcWrite(0, speed * 4095 / 512); // Forward direction
+        digitalWrite(pin2, LOW);         // Ensure reverse is off
     } else if (speed < 0) {
-        ledcWrite(pin1, 0);
-        ledcWrite(pin2, -speed * 4095 / 512);
+        ledcWrite(0, -speed * 4095 / 512); // Reverse direction
+        digitalWrite(pin1, LOW);           // Ensure forward is off
     } else {
-        ledcWrite(pin1, 0); // Stop
-        ledcWrite(pin2, 0);
+        digitalWrite(pin1, LOW); // Stop
+        digitalWrite(pin2, LOW);
     }
 }
