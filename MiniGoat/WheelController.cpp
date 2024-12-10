@@ -5,8 +5,8 @@ WheelController::WheelController(uint8_t ain1, uint8_t ain2, uint8_t bin1, uint8
       _pwmResolution(pwmResolution), _pwmFrequency(pwmFrequency) {
     _channels[_ain1] = 0;
     _channels[_ain2] = 1;
-    _channels[_bin1] = 6;
-    _channels[_bin2] = 7;
+    _channels[_bin1] = 2;
+    _channels[_bin2] = 3;
 }
 
 void WheelController::begin() {
@@ -33,11 +33,11 @@ void WheelController::setMotorSpeed(uint8_t pin1, uint8_t pin2, int speed) {
     uint8_t channel2 = _channels[pin2];
 
     if (speed > 0) {
-        ledcWrite(channel1, speed);
+        ledcWrite(channel1, speed * 4095 / 512);
         ledcWrite(channel2, 0);
     } else if (speed < 0) {
         ledcWrite(channel1, 0);
-        ledcWrite(channel2, -speed);
+        ledcWrite(channel2, -speed * 4095 / 512);
     } else {
         ledcWrite(channel1, 0);
         ledcWrite(channel2, 0);

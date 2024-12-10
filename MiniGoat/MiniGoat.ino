@@ -2,6 +2,8 @@
 #include "WheelController.h"
 #include "WinchController.h"
 
+#define SLP_PIN D1
+
 #define WINCH_AIN1_PIN D3
 #define WINCH_AIN2_PIN D4
 #define WINCH_BIN1_PIN D5
@@ -81,6 +83,9 @@ void setup() {
         delay(10);
     }
 
+    pinMode(SLP_PIN, OUTPUT);
+    digitalWrite(SLP_PIN, HIGH);
+
     wheelController.begin();
     winchController.begin();
 
@@ -103,9 +108,6 @@ void loop() {
             }
         }
     }
-
-    // winchController.update(false,false,false,true);
-    wheelController.update(250, 0); 
 
     delay(50);
 }

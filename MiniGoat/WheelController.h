@@ -6,7 +6,7 @@
 
 class WheelController {
 public:
-    WheelController(uint8_t ain1, uint8_t ain2, uint8_t bin1, uint8_t bin2, uint8_t pwmResolution = 12, uint32_t pwmFrequency = 100);
+    WheelController(uint8_t ain1, uint8_t ain2, uint8_t bin1, uint8_t bin2, uint8_t pwmResolution = 12, uint32_t pwmFrequency = 50);
     void begin();
     void update(int forwardCommand, int steeringCommand);
 
