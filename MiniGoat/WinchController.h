@@ -5,13 +5,8 @@
 
 class WinchController {
 public:
-    // Constructor to initialize the motor driver pins
-    WinchController(uint8_t ain1, uint8_t ain2, uint8_t bin1, uint8_t bin2, uint8_t pwmResolution = 12, uint32_t pwmFrequency = 333);
-
-    // Initialize the motor driver
+    WinchController(uint8_t ain1, uint8_t ain2, uint8_t bin1, uint8_t bin2, uint8_t pwmResolution = 12, uint32_t pwmFrequency = 100);
     void begin();
-
-    // Update winches based on controller input
     void update(bool up, bool down, bool left, bool right);
 
 private:

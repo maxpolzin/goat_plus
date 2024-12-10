@@ -53,7 +53,25 @@ void processGamepad(ControllerPtr ctl) {
     bool left = (dpadState & DPAD_LEFT);
     bool right = (dpadState & DPAD_RIGHT);
 
+
+    uint16_t buttonState = ctl->buttons();
+    const uint16_t BUTTON_TRIANGLE = (1 << 12);  // Triangle button
+    const uint16_t BUTTON_CROSS = (1 << 13);     // Cross (X) button
+    const uint16_t BUTTON_CIRCLE = (1 << 14);    // Circle button
+    const uint16_t BUTTON_SQUARE = (1 << 15);    // Square button
+    if (buttonState & BUTTON_TRIANGLE) {
+        up = true; down = false; left = false; right = true;
+    } else if (buttonState & BUTTON_CROSS) {
+        up = false; down = true; left = true; right = false;
+    } else if (buttonState & BUTTON_CIRCLE) {
+        up = true; down = false; left = true; right = false;
+    } else if (buttonState & BUTTON_SQUARE) {
+        up = false; down = true; left = false; right = true;
+    }
+
     winchController.update(up, down, left, right);
+
+    Serial.printf("Buttons: 0x%04x, Up: %d, Down: %d, Left: %d, Right: %d\n", buttonState, up, down, left, right);
 }
 
 void setup() {

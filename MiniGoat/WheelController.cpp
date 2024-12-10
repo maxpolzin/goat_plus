@@ -4,13 +4,11 @@ WheelController::WheelController(uint8_t ain1, uint8_t ain2, uint8_t bin1, uint8
     : _ain1(ain1), _ain2(ain2), _bin1(bin1), _bin2(bin2), _pwmResolution(pwmResolution), _pwmFrequency(pwmFrequency) {}
 
 void WheelController::begin() {
-    // Initialize motor driver pins
     pinMode(_ain1, OUTPUT);
     pinMode(_ain2, OUTPUT);
     pinMode(_bin1, OUTPUT);
     pinMode(_bin2, OUTPUT);
 
-    // Configure PWM for motor control
     ledcSetup(0, _pwmFrequency, _pwmResolution); // Channel 0 for AIN1
     ledcSetup(1, _pwmFrequency, _pwmResolution); // Channel 1 for AIN2
     ledcSetup(2, _pwmFrequency, _pwmResolution); // Channel 2 for BIN1
@@ -26,12 +24,10 @@ void WheelController::update(int forwardCommand, int steeringCommand) {
     int leftSpeed = forwardCommand + steeringCommand;
     int rightSpeed = forwardCommand - steeringCommand;
 
-    // Normalize the speeds to be within -512 to 512
     int maxValue = max(max(abs(leftSpeed), abs(rightSpeed)), 512);
     leftSpeed = leftSpeed * 512 / maxValue;
     rightSpeed = rightSpeed * 512 / maxValue;
 
-    // Apply speed to motors
     setMotorSpeed(_ain1, _ain2, leftSpeed);
     setMotorSpeed(_bin1, _bin2, rightSpeed);
 
@@ -50,16 +46,13 @@ void WheelController::update(int forwardCommand, int steeringCommand) {
 
 }
 
-
-
-
 void WheelController::setMotorSpeed(uint8_t pin1, uint8_t pin2, int speed) {
     if (speed > 0) {
-        ledcWrite(pin1, speed * 4095 / 512); // Forward direction
+        ledcWrite(pin1, speed * 4095 / 512);
         ledcWrite(pin2, 0);
     } else if (speed < 0) {
         ledcWrite(pin1, 0);
-        ledcWrite(pin2, -speed * 4095 / 512); // Reverse direction
+        ledcWrite(pin2, -speed * 4095 / 512);
     } else {
         ledcWrite(pin1, 0); // Stop
         ledcWrite(pin2, 0);

@@ -5,13 +5,8 @@
 
 class WheelController {
 public:
-    // Constructor to initialize motor driver pins
-    WheelController(uint8_t ain1, uint8_t ain2, uint8_t bin1, uint8_t bin2, uint8_t pwmResolution = 12, uint32_t pwmFrequency = 333);
-
-    // Initialize the motor driver
+    WheelController(uint8_t ain1, uint8_t ain2, uint8_t bin1, uint8_t bin2, uint8_t pwmResolution = 12, uint32_t pwmFrequency = 100);
     void begin();
-
-    // Method to update motor speeds based on forward and steering commands
     void update(int forwardCommand, int steeringCommand);
 
 private:
