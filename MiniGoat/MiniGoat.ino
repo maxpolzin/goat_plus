@@ -49,6 +49,8 @@ void processGamepad(ControllerPtr ctl) {
     int steeringCommand = abs(ctl->axisRX()) < 50 ? 0 : ctl->axisRX();
     wheelController.update(forwardCommand, steeringCommand);
 
+    Serial.printf("Forward Command: %d, Steering Command: %d\n", forwardCommand, steeringCommand);
+
     uint8_t dpadState = ctl->dpad();
     bool up = (dpadState & DPAD_UP);
     bool down = (dpadState & DPAD_DOWN);
@@ -57,21 +59,22 @@ void processGamepad(ControllerPtr ctl) {
 
 
     uint16_t buttonState = ctl->buttons();
-    const uint16_t BUTTON_TRIANGLE = (1 << 12);  // Triangle button
-    const uint16_t BUTTON_CROSS = (1 << 13);     // Cross (X) button
-    const uint16_t BUTTON_CIRCLE = (1 << 14);    // Circle button
-    const uint16_t BUTTON_SQUARE = (1 << 15);    // Square button
-    if (buttonState & BUTTON_TRIANGLE) {
+    const uint16_t BUTTON_A = 0x0001;
+    const uint16_t BUTTON_Y = 0x0008;
+    const uint16_t BUTTON_B = 0x0002;
+    const uint16_t BUTTON_X = 0x0004;
+
+    if (buttonState & BUTTON_B) { 
         up = true; down = false; left = false; right = true;
-    } else if (buttonState & BUTTON_CROSS) {
+    } else if (buttonState & BUTTON_X) { 
         up = false; down = true; left = true; right = false;
-    } else if (buttonState & BUTTON_CIRCLE) {
+    } else if (buttonState & BUTTON_Y) { 
         up = true; down = false; left = true; right = false;
-    } else if (buttonState & BUTTON_SQUARE) {
+    } else if (buttonState & BUTTON_A) { 
         up = false; down = true; left = false; right = true;
     }
 
-    // winchController.update(up, down, left, right);
+    winchController.update(up, down, left, right);
 
     Serial.printf("Buttons: 0x%04x, Up: %d, Down: %d, Left: %d, Right: %d\n", buttonState, up, down, left, right);
 }
@@ -79,9 +82,9 @@ void processGamepad(ControllerPtr ctl) {
 void setup() {
     Serial.begin(115200);
 
-    while (!Serial) {
-        delay(10);
-    }
+    // while (!Serial) {
+    //     delay(10);
+    // }
 
     pinMode(SLP_PIN, OUTPUT);
     digitalWrite(SLP_PIN, HIGH);
