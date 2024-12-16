@@ -17,11 +17,6 @@ void Potentiometer::setCurrent(float current) {
     int pwm_signal_us = mapCurrentToPWM(current);
     int pwm_value = (pwm_signal_us * 4095) / 20000; // Convert microseconds to 12-bit duty cycle
   
-    Serial.print("Input Current (mA): ");
-    Serial.print(current);
-    Serial.print(" -> Mapped PWM Signal: ");
-    Serial.println(pwm_value);
-  
     analogWrite(pin_, pwm_value);
 }
 
