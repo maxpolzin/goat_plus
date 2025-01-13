@@ -11,8 +11,9 @@ public:
     bool isStable();                // Check stability
 
 private:
-    static const size_t history_size_ = 5;
+    static const size_t history_size_ = 8;
     static const float stability_threshold_;
+    static const float min_operating_current_; // mA
 
     float current_history_[history_size_];
     size_t history_index_;

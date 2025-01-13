@@ -8,7 +8,7 @@ ChargeController::ChargeController()
 int ChargeController::update(int pvVoltage_mV, int pvCurrent_mA, bool isStable, bool isBatteryConnected)
 {
     static const unsigned long nSeconds = 60;
-    static const int stepIncrement_mA = 20;
+    static const int stepIncrement_mA = 3;
     static unsigned long lastProbeTime = 0;
     static bool isProbing = true;
     static int stableSetpoint_mA = 0;

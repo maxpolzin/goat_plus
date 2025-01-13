@@ -56,7 +56,7 @@ void loop() {
 
     unsigned long now = millis();
 
-    if (now - lastFastUpdate >= 500) { // 2 Hz
+    if (now - lastFastUpdate >= 100) {
         lastFastUpdate = now;
 
         digitalWrite(LED_BUILTIN, HIGH);
@@ -73,7 +73,7 @@ void loop() {
         digitalWrite(LED_BUILTIN, LOW);
     }
 
-    if (now - lastSlowUpdate >= 2000) { // 0.5 Hz
+    if (now - lastSlowUpdate >= 500) {
         lastSlowUpdate = now;
 
         bool stable = boost_converter.isStable();
