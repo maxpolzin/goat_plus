@@ -4,7 +4,7 @@
 Potentiometer::Potentiometer(int pin)
     : min_current_(60), max_current_(400), min_pwm_(2500), max_pwm_(500), pin_(pin) {}
 
-void Potentiometer::setup() {
+void Potentiometer::begin() {
     pinMode(pin_, OUTPUT);
     analogWriteFrequency(pin_, 50);
     analogWriteResolution(12);

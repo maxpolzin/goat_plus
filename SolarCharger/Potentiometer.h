@@ -4,7 +4,7 @@
 class Potentiometer {
 public:
     Potentiometer(int pin);
-    void setup();
+    void begin();
     void setCurrent(float current);
 
 private:
