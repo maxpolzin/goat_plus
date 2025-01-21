@@ -112,8 +112,5 @@ void loop() {
         }
     }
 
-    // winchController.update(false,false,false,false);
-    // wheelController.update(512, 0); 
-
     delay(50);
 }
