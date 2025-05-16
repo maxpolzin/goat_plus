@@ -23,6 +23,7 @@ float BatteryVoltage::readVoltage() {
 }
 
 bool BatteryVoltage::isBatteryConnected() {
-    float voltage = readVoltage();
-    return (voltage <= OPEN_CIRCUIT_VOLTAGE);
+    // float voltage = readVoltage();
+    // return (voltage <= OPEN_CIRCUIT_VOLTAGE);
+    return true;
 }

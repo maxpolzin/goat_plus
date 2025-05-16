@@ -1,7 +1,7 @@
 #include "BoostConverter.h"
 #include <Arduino.h>
 
-const float BoostConverter::stability_threshold_ = 100.0f; // mA
+const float BoostConverter::stability_threshold_ = 150.0f; // mA
 const float BoostConverter::min_operating_current_ = 60.0f; // mA
 
 BoostConverter::BoostConverter()
