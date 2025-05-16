@@ -1,3 +1,6 @@
 [submodule "FlyingGoat"]
 	path = FlyingGoat
 	url = ./FlyingGoat
+[submodule "dijkstra"]
+	path = dijkstra
+	url = ./dijkstra
